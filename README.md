@@ -1,4 +1,4 @@
-Dynamic Time Warping Project
+##Dynamic Time Warping Project
 
 [Examples](http://nbviewer.ipython.org/github/honeyext/cdtw/blob/master/examples.ipynb)
 
