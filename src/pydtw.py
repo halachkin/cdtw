@@ -15,7 +15,7 @@ class dtw(cydtw):
     def plot_mat_path(self, colormap=cm.Greys_r):
         ils = []
         jls = []
-        for i, j in self.path_indices():
+        for i, j in self.get_path():
             ils.append(i), jls.append(j)
 
         fig = plt.figure(1)
