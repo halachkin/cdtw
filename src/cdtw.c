@@ -126,7 +126,7 @@ struct t_item min_nidx(double* arr, int n)
  * Function:  dp1
  * -------------------- 
  
- * NOTE: ALL STEP FUNCTIONS have the same args, defined in macro 
+ * NOTE: ALL STEP FUNCTIONS have the same args defined in macro 
  *_DP_ARGS(cdtw.h). Step functions like step_pattern_type and 
  * step_pattern_typedir are pretty similar, step_pattern_type are used in 
  * computing dtw without path(without traceback). step_pattern_typedir are 
