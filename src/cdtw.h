@@ -86,7 +86,7 @@ struct t_item{
  * -------------------- 
  *  Contains dtw settings
  *
- *  int compute_path:   0 - to compute only distance and matrices
+ *  int compute_path:   0 - to compute only distance and cost matrix
  *                      1 - to compute optimal path
  *                      default 0
  *  int dist_type:      distance function:
@@ -118,7 +118,7 @@ struct t_item{
  *  int norm:               normalization 
  *                          0 - without normalization
  *                          1 - with normalization factor
- *  int offset:   number of extra rows and columns for cost matrix
+ *  int offset:   number of extra rows and columns for the cost matrix
  *
  */
 struct t_dtw_settings{
@@ -135,11 +135,10 @@ struct t_dtw_settings{
 
 /*path patterns for step functions*/
 /*
-path pattern is a matrix like:
 'Sakoe-Chiba 1/2 sym' 
- [5,-1,-3,-1,-2,-1,-1,-2,-1,-3,-1] <- 5 path_points (-1-,3),(-1,-2),...
- [3, 0,-1, 0,-2,-1,-3, 0, 0, 0, 0] <- path to first target with 
- [2, 0,-1,-1,-2, 0, 0, 0, 0, 0, 0],                3 parts (0,-1),(0,-2),..
+ [5,-1,-3,-1,-2,-1,-1,-2,-1,-3,-1] <- 5 end points (-1-,3),(-1,-2),...
+ [3, 0,-1, 0,-2,-1,-3, 0, 0, 0, 0] <- subpath to the first end point 
+ [2, 0,-1,-1,-2, 0, 0, 0, 0, 0, 0],               
  [1,-1,-1, 0, 0, 0, 0, 0, 0, 0, 0],
  [2,-1, 0,-2,-1, 0, 0, 0, 0, 0, 0],
  [3,-1, 0,-2, 0,-3,-1, 0, 0, 0, 0],
@@ -191,7 +190,7 @@ const int p2_path_pattern[6][11] =     {{3,-2,-3,-1,-1,-3,-2, 0, 0, 0, 0},
  *  returns: int (1,2 or 3)
  */
 int extra_size(int dp_type);
-/*--------------------finds minimum value----------------------*/
+
 /*
  * Function:  min3
  * -------------------- 
@@ -217,7 +216,6 @@ double min3(double x, double y, double z);
  */
 double min_n(double* arr, int n);
 
-/*--------------------find minimum value + index--------------*/
 /*
  * Function:  min2idx
  * -------------------- 
@@ -254,15 +252,11 @@ struct t_item min3idx(double x, double y, double z);
  */
 struct t_item min_nidx(double* arr, int n);
 
-/*----------------------------------------------------------------------------*/
-/* -------------------------------- step patterns ----------------------------*/
-/*----------------------------------------------------------------------------*/
-/*--------------------------usual------------------------------*/
 /*
  * Function:  dp1
  * -------------------- 
  
- * NOTE: ALL STEP FUNCTIONS have the same args, defined in macro 
+ * NOTE: ALL STEP FUNCTIONS have the same args defined in macro 
  *_DP_ARGS(cdtw.h). Step functions like step_pattern_type and 
  * step_pattern_typedir are pretty similar, step_pattern_type are used in 
  * computing dtw without path(without traceback). step_pattern_typedir are 
@@ -519,9 +513,9 @@ struct t_item p2_asymdir(       _DP_ARGS);
 /*
  * Function:  scband
  * -------------------- 
- *  Sakoe-Chiba band global constraint
+ *  Sakoe-Chiba band global constraint. 
  *  NOTE: This function is redundant at the moment(scband is unnecessary, when 
- *  there exitsts palival window + there is a faster for-loop implementation)
+ *  there exists palival window + there is a faster for-loop implementation)
  *  int i:    row index
  *  int j:    column index
  *  double r: width of the window
@@ -534,8 +528,8 @@ bool scband(     int i, int j, double r, double I, double J);
 /*
  * Function: palival
  * --------------------
- *  Palival global constraint, it is similar to scband, but but adapts to the 
- *  length of sequences
+ *  Palival global constraint, it is similar to scband, but adapts to the 
+ *  length of sequences. 
  *  NOTE: This function is redundant at the moment, there is a faster 
  *  for-loop implementation. 
  *  int i:    row index
@@ -551,7 +545,8 @@ bool palival(    int i, int j, double r, double I, double J);
  * Function: palival_mod
  * --------------------
  *  Palival global constraint, it is similar to scband, but but adapts to the 
- *  length of sequences. For the difference palival and palival_mod see the args 
+ *  length of sequences. Difference between palival and palival_mod is only in 
+ *  the width definition. 
  *  NOTE: This function is redundant at the moment, there is a faster 
  *  for-loop implementation. 
  *  int i:    row index
@@ -588,7 +583,7 @@ bool nowindow(   int i, int j, double k, double I, double J);
 /*
  * Function:  manhattan
  * --------------------
- *  Euclidean distance 
+ *  helps in computing manhattan distance 
  *  double a:  1 dimensional point  
  *  double b:  1 dimensional point  
  *  returns: double, manhattan distance between two dimensional points 
