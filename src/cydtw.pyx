@@ -182,6 +182,8 @@ class Window:
         self._cur_type = window
         self._types = {'scband': _SCBAND, 'palival':     _PALIVAL,
                        'itakura': _ITAKURA, 'palival_mod': _PALIVAL_MOD, 'nowindow': 0}
+        self._dummy = {_SCBAND:'scband', _PALIVAL: 'palival',\
+                       _ITAKURA:'itakura', _PALIVAL_MOD:'palival_mod', 0: 'nowindow'}
         self._param = param
 
     def set_type(self, itype):
