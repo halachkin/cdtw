@@ -98,6 +98,7 @@ class dtw(cydtw):
         plt.figure(1)
         plt.plot(copy_ref, lw=3)
         plt.plot(self._query, lw=3)
+        plt.xlim(-0.5, max(len(self._ref), len(self._query)) + 1)
         for val in self._path:
             plt.plot([val[0], val[1]], \
                      [copy_ref[val[0]], self._query[val[1]]], 'k', lw=0.5)

@@ -121,9 +121,8 @@ struct t_item min_nidx(double* arr, int n)
 
 
 
-
 /*
- * Function:  dp1
+ * Function:  dpw
  * -------------------- 
  
  * NOTE: ALL STEP FUNCTIONS have the same args defined in macro 
@@ -132,13 +131,14 @@ struct t_item min_nidx(double* arr, int n)
  * computing dtw without path(without traceback). step_pattern_typedir are 
  * used in computing dtw with path(traceback) 
 
- *  Step patern dp1:
+ *  Step patern dpw - weights:
  *  min(      
- *      cost_matrix[i][j-1]   +   d(r[i],q[j])    
-        cost_matrix[i-1][j]   +   d(r[i],q[j]),    
-        cost_matrix[i-1][j-1] + 2*d(r[i],q[j])
+ *      cost_matrix[i][j-1]   +   a*d(r[i],q[j])    
+        cost_matrix[i-1][j]   +   b*d(r[i],q[j]),    
+        cost_matrix[i-1][j-1] +   c*d(r[i],q[j])
        )
-
+ * where a,b,c are weights 
+ *
  * double* ref: reference sequence
  * double* query: query sequence
  * double* cost_matrix: cost matrix
@@ -148,6 +148,27 @@ struct t_item min_nidx(double* arr, int n)
  * int size2:  cost matrix columns count 
  * double (*dist)(double a, double b): poiter to distance function
 
+ * returns:  double, value to assign cost_matrix[i][j]
+*/
+double dpw(_DP_ARGS)
+{
+    double d = dist(ref[i], query[j]);
+    return min3(cost_matrix[idx(i, j-1, size2)] +  t_s->weights.a*d,    
+                cost_matrix[idx(i-1, j, size2)] +  t_s->weights.b*d,    
+                cost_matrix[idx(i-1, j-1, size2)] +t_s->weights.c*d); 
+}    
+
+
+/*
+ * Function:  dp1
+ * -------------------- 
+ *  Step patern dp1:
+ *  min(      
+ *      cost_matrix[i][j-1]   +   d(r[i],q[j])    
+        cost_matrix[i-1][j]   +   d(r[i],q[j]),    
+        cost_matrix[i-1][j-1] + 2*d(r[i],q[j])
+       )
+ * see doc for the dpw
  * returns:  double, value to assign cost_matrix[i][j]
 */
 double dp1(_DP_ARGS)
@@ -167,7 +188,7 @@ double dp1(_DP_ARGS)
         cost_matrix[i-1][j]   +   d(r[i],q[j]),    
         cost_matrix[i-1][j-1] +   d(r[i],q[j])
        )
- * see doc for the dp1
+ * see doc for the dpw
 */
 double dp2(_DP_ARGS)
 {
@@ -185,7 +206,7 @@ double dp2(_DP_ARGS)
  *      cost_matrix[i][j-1]   +   d(r[i],q[j])    
         cost_matrix[i-1][j]   +   d(r[i],q[j]),    
        )
- * see doc for the dp1
+ * see doc for the dpw
 */
 double dp3(_DP_ARGS)
 {
@@ -197,7 +218,7 @@ double dp3(_DP_ARGS)
 /*
  * Function:  dp1dir
  * -------------------- 
- * see doc for the dp1
+ * see doc for the dpw
 */
 struct t_item dp1dir(_DP_ARGS)
 {
@@ -210,7 +231,7 @@ struct t_item dp1dir(_DP_ARGS)
 /*
  * Function:  dp2dir
  * -------------------- 
- * see doc for the dp1,dp2
+ * see doc for the dpw,dp2
 */
 struct t_item dp2dir(_DP_ARGS)
 {
@@ -223,7 +244,7 @@ struct t_item dp2dir(_DP_ARGS)
 /*
  * Function:  dp3dir
  * -------------------- 
- * see doc for the dp1,dp3
+ * see doc for the dpw,dp3
 */
 struct t_item dp3dir(_DP_ARGS)
 {
@@ -240,11 +261,11 @@ struct t_item dp3dir(_DP_ARGS)
  * -------------------- 
  * Sakoe-Chiba classification p = 0, symmetric step pattern
  * This function is alias for the dp1
- * see doc for the dp1
+ * see doc for the dpw
 */
 double p0_sym(_DP_ARGS)
 {
-    return dp1(ref, query,cost_matrix,i,j,offset,size2,dist);
+    return dp1(ref, query,cost_matrix,i,j,t_s,size2,dist);
 }
 
 /*
@@ -256,7 +277,7 @@ double p0_sym(_DP_ARGS)
         cost_matrix[i-1][j]   +   d(r[i],q[j]), 
         cost_matrix[i-1][j-1] +   d(r[i],q[j]),   
        )
- * see doc for the dp1
+ * see doc for the dpw
 */
 double p0_asym(_DP_ARGS)
 {
@@ -277,7 +298,7 @@ double p0_asym(_DP_ARGS)
  *      cost_matrix[i-2][j-1] + 2d(r[i-1],q[j]) + d(r[i],q[j]), 
  *      cost_matrix[i-3][j-1] + 2d(r[i-2],q[j]) + d(r[i-1],q[j]) + d(r[i],q[j])
        )
- * see doc for the dp1
+ * see doc for the dpw
 */
 double p1div2_sym(_DP_ARGS)
 {
@@ -308,7 +329,7 @@ double p1div2_sym(_DP_ARGS)
  *   cost_matrix[i-2][j-1] + d(r[i-1],q[j])  + d(r[i],q[j]), 
  *   cost_matrix[i-3][j-1] + d(r[i-2],q[j])  + d(r[i-1],q[j]) + d(r[i],q[j])
        )
- * see doc for the dp1
+ * see doc for the dpw
 */
 double p1div2_asym(_DP_ARGS)
 {
@@ -337,7 +358,7 @@ double p1div2_asym(_DP_ARGS)
  *      cost_matrix[i-1][j-1] + 2d(r[i],q[j]), 
  *      cost_matrix[i-2][j-1] + 2d(r[i-1],q[j]) + d(r[i],q[j]), 
        )
- * see doc for the dp1
+ * see doc for the dpw
 */
 double p1_sym(_DP_ARGS)
 {
@@ -360,7 +381,7 @@ double p1_sym(_DP_ARGS)
  *      cost_matrix[i-1][j-1] + d(r[i],q[j]), 
  *      cost_matrix[i-2][j-1] + d(r[i-1],q[j]) + d(r[i],q[j]), 
        )
- * see doc for the dp1
+ * see doc for the dpw
 */
 double p1_asym(   _DP_ARGS)
 {
@@ -390,7 +411,7 @@ double p1_asym(   _DP_ARGS)
  *                             2d(r[i-1],q[j])   +
  *                             d(r[i],q[j])
  *     )
- * see doc for the dp1
+ * see doc for the dpw
 */
 double p2_sym(    _DP_ARGS)
 { 
@@ -422,7 +443,7 @@ double p2_sym(    _DP_ARGS)
  *                             d(r[i-1],q[j])   +
  *                             d(r[i],q[j])
  *     )
- * see doc for the dp1
+ * see doc for the dpw
 */
 double p2_asym(   _DP_ARGS)   
 { 
@@ -440,6 +461,14 @@ double p2_asym(   _DP_ARGS)
 }
 
 
+struct t_item dpwdir(_DP_ARGS)
+{
+    double d = dist(ref[i], query[j]);
+    return min3idx(cost_matrix[idx(i, j-1, size2)]   + t_s->weights.a*d,      
+                   cost_matrix[idx(i-1, j, size2)]   + t_s->weights.b*d,   
+                   cost_matrix[idx(i-1, j-1, size2)] + t_s->weights.c*d);  
+}
+
 /*
  * Function:  p0_symdir
  * -------------------- 
@@ -448,7 +477,7 @@ double p2_asym(   _DP_ARGS)
 */
 struct t_item p0_symdir(_DP_ARGS)
 {
-    return dp1dir(ref, query,cost_matrix,i,j,offset, size2, dist);
+    return dp1dir(ref, query,cost_matrix,i,j,t_s, size2, dist);
 }
 
 /*
@@ -738,6 +767,7 @@ dp_fptr choose_dp(int dp_type)
     if(dp_type == _DP1)                return &dp1;
     else if(dp_type == _DP2)           return &dp2;
     else if(dp_type == _DP3)           return &dp3;
+    else if(dp_type == _DPW)           return &dpw;
     else if(dp_type == _SCP0SYM)       return &p0_sym;
     else if(dp_type == _SCP0ASYM)      return &p0_asym;
     else if(dp_type == _SCP1DIV2SYM)   return &p1div2_sym;
@@ -762,6 +792,7 @@ dpdir_fptr choose_dpdir(int dp_type)
     if(dp_type == _DP1)                return &dp1dir;
     else if(dp_type == _DP2)           return &dp2dir;
     else if(dp_type == _DP3)           return &dp3dir;
+    else if(dp_type == _DPW)           return &dpwdir;
     else if(dp_type == _SCP0SYM)       return &p0_symdir;
     else if(dp_type == _SCP0ASYM)      return &p0_asymdir;
     else if(dp_type == _SCP1DIV2SYM)   return &p1div2_symdir;
@@ -1007,13 +1038,13 @@ double cdtwnopath(double* ref,
         cost_matrix[idx(off, off, N)] = dist(ref[0], query[0]);
         for(j = max2(off+1, _round(s*(off-w))); j < min2(N, _round(s*(off+w)+1)); j++)
         {
-            cost_matrix[idx(off, j, N)] = dp(ref, query, cost_matrix, off, j, off, N, dist);
+            cost_matrix[idx(off, j, N)] = dp(ref, query, cost_matrix, off, j, &dtw_settings, N, dist);
         }
        
         for(i = off + 1; i<M; i++)
         {
             for(j = max2(off, _round(s*(i-w))); j < min2(N, _round(s*(i+w)+1)); j++)
-                cost_matrix[idx(i, j, N)] = dp(ref, query, cost_matrix, i, j, off, N, dist);           
+                cost_matrix[idx(i, j, N)] = dp(ref, query, cost_matrix, i, j, &dtw_settings, N, dist);           
         }
 
     }
@@ -1024,14 +1055,14 @@ double cdtwnopath(double* ref,
         for(j = off+1 ; j<N; j++)
         {
             if(window(off, j, p, len_ref, len_query))
-                cost_matrix[idx(off, j, N)] = dp(ref, query, cost_matrix, off, j, off, N, dist);
+                cost_matrix[idx(off, j, N)] = dp(ref, query, cost_matrix, off, j, &dtw_settings, N, dist);
         }
         for(i = off + 1; i<M; i++)
         {
             for(j = off; j<N; j++)
             {
                 if(window(i, j, p, len_ref, len_query))
-                     cost_matrix[idx(i, j, N)] = dp(ref, query, cost_matrix, i, j, off, N, dist);
+                     cost_matrix[idx(i, j, N)] = dp(ref, query, cost_matrix, i, j, &dtw_settings, N, dist);
             } 
         }       
     }
@@ -1100,7 +1131,7 @@ double cdtwpath(double* ref,
         cost_matrix[idx(off, off, N)] = dist(ref[off], query[off]);
         for(j = max2(off+1, _round(s*(off-w))); j < min2(N, _round(s*(off+w)+1)); j++)
         {
-            item = dp_dir(ref, query, cost_matrix, off, j, off, N, dist);
+            item = dp_dir(ref, query, cost_matrix, off, j, &dtw_settings, N, dist);
             cost_matrix[idx(off, j, N)] = item.val;
             dir_matrix[idx(0, j-off, N-off) ] = item.idx;
         }
@@ -1109,7 +1140,7 @@ double cdtwpath(double* ref,
         {
             for(j = max2(off, _round(s*(i-w))); j < min2(N, _round(s*(i+w)+1)); j++)
             {
-                item = dp_dir(ref, query, cost_matrix, i, j, off, N, dist);
+                item = dp_dir(ref, query, cost_matrix, i, j, &dtw_settings, N, dist);
                 cost_matrix[idx(i, j, N)] = item.val;
                 dir_matrix[ idx(i-off, j-off, N-off)] = item.idx;
             }
@@ -1123,7 +1154,7 @@ double cdtwpath(double* ref,
         {
             if(window(off, j, p, len_ref, len_query))
             {
-                item = dp_dir(ref, query, cost_matrix, off, j, off, N, dist);
+                item = dp_dir(ref, query, cost_matrix, off, j, &dtw_settings, N, dist);
                 cost_matrix[idx(off, j, N)] = item.val;
                 dir_matrix[ idx(0, j-off, N-off) ] = item.idx;            
             }
@@ -1134,7 +1165,7 @@ double cdtwpath(double* ref,
             {
                 if(window(i, j, p, len_ref, len_query))
                 {
-                    item = dp_dir(ref, query, cost_matrix, i, j, off, N, dist);
+                    item = dp_dir(ref, query, cost_matrix, i, j, &dtw_settings, N, dist);
                     cost_matrix[idx(i, j, N)] = item.val;
                     dir_matrix[ idx(i-off, j-off, N-off) ] = item.idx;    
                 }

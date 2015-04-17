@@ -17,6 +17,11 @@ cdef extern from "cdtw.c":
         int i
         int j
 
+    cdef struct t_weights:
+        double a
+        double b
+        double c
+
     cdef struct t_dtw_settings:
         int compute_path
         int dist_type
@@ -25,6 +30,7 @@ cdef extern from "cdtw.c":
         double window_param
         int norm
         int offset
+        t_weights weights
 
     cdef double cdtw(double * ref,
                      double * query,
@@ -40,6 +46,7 @@ cdef enum:
     _EUCLID = 11
     _EUCLID_SQUARED = 12
     _MANHATTAN = 13
+    _DPW = 20
     _DP1 = 21
     _DP2 = 22
     _DP3 = 23
@@ -147,13 +154,14 @@ class Step:
     You can see step pattern definition using print_step method
     """
 
-    def __init__(self, step='dp2'):
+    def __init__(self, step='dp2', weights = [1,1,1]):
         self._cur_type = step
-        self._types = {'dp1': _DP1, 'dp2': _DP2, 'dp3': _DP3,
+        self._types = { 'dpw': _DPW, 'dp1': _DP1, 'dp2': _DP2, 'dp3': _DP3,
                        'p0sym': _SCP0SYM, 'p0asym': _SCP0ASYM,
                        'p05sym': _SCP1DIV2SYM, 'p05asym': _SCP1DIV2ASYM,
                        'p1sym':  _SCP1SYM, 'p1asym': _SCP1ASYM,
                        'p2sym': _SCP2SYM, 'p2asym': _SCP2ASYM}
+        self._weights = weights
 
     def set_type(self, itype):
         if itype in self._types.keys():
@@ -162,8 +170,14 @@ class Step:
             print "Unknown DP type, available slope constraints: \n"  \
                 + str(self._types)
 
+    def set_weights(self,w):
+        self._weights = w
+
     def get_cur_type(self):
         return self._types[self._cur_type]
+
+    def get_weights(self):
+        return self._weights
 
     def step_str(self, itype):
         return stepstr[itype]
@@ -264,6 +278,9 @@ class cydtw:
         c_dtw_settings.window_param = <double > settings.window.get_param()
         c_dtw_settings.norm = <int > settings.norm
         c_dtw_settings.offset = extra_size(c_dtw_settings.dp_type)
+        c_dtw_settings.weights.a = <double>settings.step.get_weights()[0]
+        c_dtw_settings.weights.b = <double>settings.step.get_weights()[1]
+        c_dtw_settings.weights.c = <double>settings.step.get_weights()[2]
 
         # allocate path
         cdef t_path_element * cpath = <t_path_element * >malloc(sizeof(

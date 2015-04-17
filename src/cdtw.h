@@ -13,9 +13,7 @@ typedef int bool;
 #define true 1
 #define false 0
 
-// #define UP 1
-// #define LEFT 0
-// #define DIAG 2
+
 
 /*distance types*/
 #define _EUCLID 11          /*euclidean distance*/
@@ -23,6 +21,7 @@ typedef int bool;
 #define _MANHATTAN 13       /*manhattan distance*/
 
 /*step pattern types, read struct dtw_settings for more info*/
+#define _DPW            20  
 #define _DP1            21  
 #define _DP2            22
 #define _DP3            23
@@ -52,7 +51,7 @@ typedef int bool;
                     double* cost_matrix,\
                     int i,\
                     int j,\
-                    int offset,\
+                    struct t_dtw_settings* t_s,\
                     int size2, \
                     double (*dist)(double a, double b)
 
@@ -80,6 +79,14 @@ struct t_item{
     double val;
     int idx;
 };
+
+/*weights for step pattern*/
+struct t_weights{
+    double a;
+    double b;
+    double c;
+ }; 
+ 
 
 /*
  * Structure:  t_path_element
@@ -121,6 +128,7 @@ struct t_item{
  *  int offset:   number of extra rows and columns for the cost matrix
  *
  */
+
 struct t_dtw_settings{
 
         int compute_path;
@@ -129,7 +137,8 @@ struct t_dtw_settings{
         int window_type;
         double window_param;
         int norm;
-        int offset; 
+        int offset;
+        struct t_weights weights;
 
 };
 
@@ -253,7 +262,7 @@ struct t_item min3idx(double x, double y, double z);
 struct t_item min_nidx(double* arr, int n);
 
 /*
- * Function:  dp1
+ * Function:  dpw
  * -------------------- 
  
  * NOTE: ALL STEP FUNCTIONS have the same args defined in macro 
@@ -262,12 +271,13 @@ struct t_item min_nidx(double* arr, int n);
  * computing dtw without path(without traceback). step_pattern_typedir are 
  * used in computing dtw with path(traceback) 
 
- *  Step patern dp1:
+ *  Step patern dpw - weights:
  *  min(      
- *      cost_matrix[i][j-1]   +   d(r[i],q[j])    
- *       cost_matrix[i-1][j]   +   d(r[i],q[j]),    
- *       cost_matrix[i-1][j-1] + 2*d(r[i],q[j])
- *      )
+ *      cost_matrix[i][j-1]   +   a*d(r[i],q[j])    
+        cost_matrix[i-1][j]   +   b*d(r[i],q[j]),    
+        cost_matrix[i-1][j-1] +   c*d(r[i],q[j])
+       )
+ * where a,b,c are weights 
  *
  * double* ref: reference sequence
  * double* query: query sequence
@@ -278,6 +288,20 @@ struct t_item min_nidx(double* arr, int n);
  * int size2:  cost matrix columns count 
  * double (*dist)(double a, double b): poiter to distance function
 
+ * returns:  double, value to assign cost_matrix[i][j]
+*/
+double dpw(_DP_ARGS);
+
+/*
+ * Function:  dp1
+ * -------------------- 
+ *  Step patern dp1:
+ *  min(      
+ *      cost_matrix[i][j-1]   +   d(r[i],q[j])    
+        cost_matrix[i-1][j]   +   d(r[i],q[j]),    
+        cost_matrix[i-1][j-1] + 2*d(r[i],q[j])
+       )
+ * see doc for the dpw
  * returns:  double, value to assign cost_matrix[i][j]
 */
 double dp1(_DP_ARGS);
@@ -291,7 +315,7 @@ double dp1(_DP_ARGS);
  *      cost_matrix[i-1][j]   +   d(r[i],q[j]),    
  *      cost_matrix[i-1][j-1] +   d(r[i],q[j])
  *      )
- * see doc for the dp1
+ * see doc for the dpw
 */
 double dp2(_DP_ARGS);
 
@@ -303,28 +327,35 @@ double dp2(_DP_ARGS);
  *      cost_matrix[i][j-1]   +   d(r[i],q[j])    
  *      cost_matrix[i-1][j]   +   d(r[i],q[j]),    
  *      )
- * see doc for the dp1
+ * see doc for the dpw
 */
 double dp3(_DP_ARGS);
 /* ------------------------usual for traceback-----------------*/
 /*
  * Function:  dp1dir
  * -------------------- 
- * see doc for the dp1
+ * see doc for the dpw
+*/
+struct t_item dpwdir(_DP_ARGS);
+
+/*
+ * Function:  dp1dir
+ * -------------------- 
+ * see doc for the dpw
 */
 struct t_item dp1dir(_DP_ARGS);
 
 /*
  * Function:  dp2dir
  * -------------------- 
- * see doc for the dp1,dp2
+ * see doc for the dpw,dp2
 */
 struct t_item dp2dir(_DP_ARGS);
 
 /*
  * Function:  dp3dir
  * -------------------- 
- * see doc for the dp1,dp3
+ * see doc for the dpw,dp3
 */
 struct t_item dp3dir(_DP_ARGS);
 /*-------------------Sakoe-Chiba classifikaction---------------*/
@@ -333,7 +364,7 @@ struct t_item dp3dir(_DP_ARGS);
  * -------------------- 
  * Sakoe-Chiba classification p = 0, symmetric step pattern
  * This function is alias for the dp1
- * see doc for the dp1
+ * see doc for the dpw
 */
 double p0_sym(      _DP_ARGS);
 
@@ -346,7 +377,7 @@ double p0_sym(      _DP_ARGS);
  *       cost_matrix[i-1][j]   +   d(r[i],q[j]), 
  *       cost_matrix[i-1][j-1] +   d(r[i],q[j]),   
  *      )
- * see doc for the dp1
+ * see doc for the dpw
 */
 double p0_asym(     _DP_ARGS);
 
@@ -361,7 +392,7 @@ double p0_asym(     _DP_ARGS);
  *      cost_matrix[i-2][j-1] + 2d(r[i-1],q[j]) + d(r[i],q[j]), 
  *      cost_matrix[i-3][j-1] + 2d(r[i-2],q[j]) + d(r[i-1],q[j]) + d(r[i],q[j])
  *      )
- * see doc for the dp1
+ * see doc for the dpw
 */
 double p1div2_sym(  _DP_ARGS);
 
@@ -376,7 +407,7 @@ double p1div2_sym(  _DP_ARGS);
  *   cost_matrix[i-2][j-1] + d(r[i-1],q[j])  + d(r[i],q[j]), 
  *   cost_matrix[i-3][j-1] + d(r[i-2],q[j])  + d(r[i-1],q[j]) + d(r[i],q[j])
  *      )
- * see doc for the dp1
+ * see doc for the dpw
 */
 double p1div2_asym( _DP_ARGS);
 
@@ -389,7 +420,7 @@ double p1div2_asym( _DP_ARGS);
  *      cost_matrix[i-1][j-1] + 2d(r[i],q[j]), 
  *      cost_matrix[i-2][j-1] + 2d(r[i-1],q[j]) + d(r[i],q[j]), 
  *      )
- * see doc for the dp1
+ * see doc for the dpw
 */
 double p1_sym(      _DP_ARGS);
 
@@ -402,7 +433,7 @@ double p1_sym(      _DP_ARGS);
  *      cost_matrix[i-1][j-1] + d(r[i],q[j]), 
  *      cost_matrix[i-2][j-1] + d(r[i-1],q[j]) + d(r[i],q[j]), 
  *      )
- * see doc for the dp1
+ * see doc for the dpw
 */
 double p1_asym(     _DP_ARGS);
 
@@ -421,7 +452,7 @@ double p1_asym(     _DP_ARGS);
  *                             2d(r[i-1],q[j])   +
  *                             d(r[i],q[j])
  *     )
- * see doc for the dp1
+ * see doc for the dpw
 */
 double p2_sym(      _DP_ARGS);
 
@@ -440,7 +471,7 @@ double p2_sym(      _DP_ARGS);
  *                             d(r[i-1],q[j])   +
  *                             d(r[i],q[j])
  *     )
- * see doc for the dp1
+ * see doc for the dpw
 */
 double p2_asym(     _DP_ARGS);
 /*---------------step patterns for traceback-------------------*/

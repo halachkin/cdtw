@@ -6,9 +6,9 @@ import numpy
 sourcefiles = ['cydtw.pyx']
 ext_modules = [Extension("cydtw", 
                           sourcefiles,
-                          include_dirs=[numpy.get_include()]
+                          include_dirs=[numpy.get_include()],
                           # extra_compile_args=[""]
-			 			  # extra_compile_args=["-std=c99", "-w"]
+			 			  extra_compile_args=["-std=c11"]
                           )]
 
 setup(
