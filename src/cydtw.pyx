@@ -84,51 +84,57 @@ cdef path_wrapper(t_path_element * cpath, int cpath_len):
         path.append((cpath[cpath_len - m - 1].i, cpath[cpath_len - m - 1].j))
     return path
 
+class Setting:
 
-class Dist:
+    def __init__(self):
+        self._types = {}
+        self._cur_type = str()
+
+
+    def set_type(self, itype):
+        """set type method"""
+        if itype in self._types.keys():
+            self._cur_type = itype
+        else:
+            print "Unknown type, possible types: \n"  + str(self._types.keys())
+
+    def get_cur_type(self):
+        """get type method"""
+        return self._cur_type
+
+    def get_cur_type_code(self):
+        return self._types[self._cur_type]
+
+    def get_options(self):
+        """get options method"""
+        return self._types.keys()
+
+    def __str__(self):
+        """__str__ method"""
+        return str(self._cur_type)      
+
+
+
+
+class Dist(Setting):
 
     """Distance type class
-
     Contains dintance types for dynamic time wapring algorithm. There are three 
-    available distance functions at the moment: 'manhattan', 'euclid' and 
+    available distance functions at the moment: 
+    'manhattan', 
+    'euclid',
     'euclid_squared'.
     """
 
     def __init__(self, dist='euclid'):
         """__init__ method
-
         Args:
-
             dist(str, optional): distance type, default is 'manhattan'
-
         """
         self._cur_type = dist
         self._types = {'euclid': _EUCLID,
                        'euclid_squared': _EUCLID_SQUARED,
                        'manhattan': _MANHATTAN}
-
-    def set_type(self, itype):
-        """set_type method
-
-        Set distance type, available distances are: 
-        'manhattan', 'euclid' and 'euclid_squared'
-
-        Args:
-
-            itype(str): distance type to set
-
-        """
-        if itype in self._types.keys():
-            self._cur_type = itype
-        else:
-            print "Unknown distance function type, \
-                   available distance functions\n" + str(self._types)
-
-    def get_cur_type(self):
-        return self._types[self._cur_type]
-
-    def __str__(self):
-        return str(self._cur_type)
 
 
 class Step:
@@ -163,18 +169,10 @@ class Step:
                        'p2sym': _SCP2SYM, 'p2asym': _SCP2ASYM}
         self._weights = weights
 
-    def set_type(self, itype):
-        if itype in self._types.keys():
-            self._cur_type = itype
-        else:
-            print "Unknown DP type, available slope constraints: \n"  \
-                + str(self._types)
+
 
     def set_weights(self,w):
         self._weights = w
-
-    def get_cur_type(self):
-        return self._types[self._cur_type]
 
     def get_weights(self):
         return self._weights
@@ -186,7 +184,7 @@ class Step:
         return str(self._cur_type)
 
 
-class Window:
+class Window(Setting):
 
     """Global constraint class.
     Available constraints: scband, itakura, palival, itakura_mod
@@ -196,28 +194,14 @@ class Window:
         self._cur_type = window
         self._types = {'scband': _SCBAND, 'palival':     _PALIVAL,
                        'itakura': _ITAKURA, 'palival_mod': _PALIVAL_MOD, 'nowindow': 0}
-        self._dummy = {_SCBAND:'scband', _PALIVAL: 'palival',\
-                       _ITAKURA:'itakura', _PALIVAL_MOD:'palival_mod', 0: 'nowindow'}
-        self._param = param
 
-    def set_type(self, itype):
-        if itype in self._types.keys():
-            self._cur_type = itype
-        else:
-            print "Unknown Global Constraint type, \
-            available slope constraints: \n" + str(self.__types.keys())
+        self._param = param
 
     def set_param(self, param):
         self._param = float(param)
 
-    def get_cur_type(self):
-        return self._types[self._cur_type]
-
     def get_param(self):
         return self._param
-
-    def get_options(self):
-        return self._types
 
     def __str__(self):
         return str(self._cur_type + ', parameter: ' + str(self._param))
