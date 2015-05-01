@@ -1,3 +1,7 @@
+#reference values are from DTW - R projekt :
+#http://dtw.r-forge.r-project.org/
+
+
 import numpy as np
 from cdtw.src.pydtw import*
 

@@ -137,7 +137,7 @@ class Dist(Setting):
                        'manhattan': _MANHATTAN}
 
 
-class Step:
+class Step(Setting):
 
     """Step class
 
@@ -256,9 +256,9 @@ class cydtw:
         # map python settings to C structure dtw_settings functions
         cdef t_dtw_settings c_dtw_settings
         c_dtw_settings.compute_path = <int > settings.compute_path
-        c_dtw_settings.dist_type = <int > settings.dist.get_cur_type()
-        c_dtw_settings.dp_type = <int > settings.step.get_cur_type()
-        c_dtw_settings.window_type = <int > settings.window.get_cur_type()
+        c_dtw_settings.dist_type = <int > settings.dist.get_cur_type_code()
+        c_dtw_settings.dp_type = <int > settings.step.get_cur_type_code()
+        c_dtw_settings.window_type = <int > settings.window.get_cur_type_code()
         c_dtw_settings.window_param = <double > settings.window.get_param()
         c_dtw_settings.norm = <int > settings.norm
         c_dtw_settings.offset = extra_size(c_dtw_settings.dp_type)
