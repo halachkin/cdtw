@@ -1035,7 +1035,7 @@ double cdtwnopath(double* ref,
             s  = 1;
         }
 
-        cost_matrix[idx(off, off, N)] = dist(ref[0], query[0]);
+        cost_matrix[idx(off, off, N)] = dist(ref[off], query[off]);
         for(j = max2(off+1, _round(s*(off-w))); j < min2(N, _round(s*(off+w)+1)); j++)
         {
             cost_matrix[idx(off, j, N)] = dp(ref, query, cost_matrix, off, j, &dtw_settings, N, dist);
@@ -1051,7 +1051,7 @@ double cdtwnopath(double* ref,
     /*slow window case*/
     else
     {
-        cost_matrix[idx(off, off, N)] = dist(ref[0], query[0]);
+        cost_matrix[idx(off, off, N)] = dist(ref[off], query[off]);
         for(j = off+1 ; j<N; j++)
         {
             if(window(off, j, p, len_ref, len_query))
@@ -1149,7 +1149,7 @@ double cdtwpath(double* ref,
     /*slow window case*/
     else
     {
-        cost_matrix[idx(off, off, N)] = dist(ref[0], query[0]);
+        cost_matrix[idx(off, off, N)] = dist(ref[off], query[off]);
         for(j = off+1; j<N; j++)
         {
             if(window(off, j, p, len_ref, len_query))
