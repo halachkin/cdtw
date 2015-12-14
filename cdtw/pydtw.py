@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from cydtw import*
+from cydtw import *
 
 
 class dtw(cydtw):
