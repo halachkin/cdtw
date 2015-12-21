@@ -20,13 +20,16 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 sourcefiles = ['cdtw/cydtw.pyx']
 ext_modules = [
-        Extension("cydtw", 
+        Extension("cdtw.cydtw", 
             sourcefiles,
-            include_dirs=[numpy.get_include()],
+            include_dirs=[numpy.get_include(), 'cdtw/'],
             # extra_compile_args=[""]
             extra_compile_args=["-std=c11"]
             )
         ]
+#ext_modules = [
+#        Extension('cdtw.cydtw', ['cdtw/cydtw.pyx'], include_dirs=[numpy.get_include(), '.'])
+#        ]
 setup(
     name='cdtw',
     cmdclass = {'build_ext': build_ext},

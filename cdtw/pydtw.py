@@ -3,7 +3,7 @@ import matplotlib.cm as cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 
-from cydtw import cydtw, Settings
+from .cydtw import cydtw, Settings
 
 
 class dtw(cydtw):
