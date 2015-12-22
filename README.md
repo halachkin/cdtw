@@ -12,14 +12,14 @@ Distance functions:
 Local constraints(step patterns, step functions):
  * [well known step patterns dp1, dp2, dp3][1]
  * [local constraints classified by Sakoe-Chiba][2]
-
+impo
 Global constraints(windows):
  * Itakura parallelogram
  * [Sakoe-chiba band, Palival adjustment window][3]
  
 ```python
 import numpy as np
-import pydtw
+from cdtw import pydtw
 r = np.array([1,2,3,4])
 q = np.array([2,3,4,5])
 d = pydtw.dtw(r,q,pydtw.Settings(step = 'p0sym',     #Sakoe-Chiba symmetric step with slope constraint p = 0
