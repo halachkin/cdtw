@@ -1,5 +1,11 @@
 ##Dynamic Time Warping Project
 
+Installation
+
+```
+pip install cdtw
+```
+
 [Examples](http://nbviewer.ipython.org/github/honeyext/cdtw/blob/master/examples.ipynb)
 
 This module implements:
