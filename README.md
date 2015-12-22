@@ -6,7 +6,7 @@ Installation
 pip install cdtw
 ```
 
-[Examples](http://nbviewer.ipython.org/github/honeyext/cdtw/blob/master/examples.ipynb)
+[Examples](https://github.com/honeyext/cdtw/blob/master/cdtw/examples.ipynb)
 
 This module implements:
 
