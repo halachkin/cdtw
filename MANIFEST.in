@@ -1,0 +1,2 @@
+recursive-include cdtw *.c *.h *.py *.pyx *.ipynb
+include README.md
