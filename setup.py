@@ -16,11 +16,16 @@ else:
     sourcefiles = ['cdtw/cydtw.c']
 
 ext_modules = [
-        Extension("cdtw.cydtw", 
+        Extension("cdtw.cydtw",
             sourcefiles,
             include_dirs=[numpy.get_include(), 'cdtw/'],
-            # extra_compile_args=[""]
-            extra_compile_args=["-std=c11"]
+            extra_compile_args=[
+                "-std=c11",
+                "-Wno-incompatible-pointer-types",
+                "-Wno-unused-variable",
+                "-Wno-absolute-value",
+                "-Wno-visibility",
+                "-Wno-#warnings"]
             )
         ]
 
@@ -29,7 +34,7 @@ setup(
     cmdclass = {'build_ext': build_ext},
     ext_modules = ext_modules,
     packages = find_packages(),
-    version='0.0.1',
+    version='0.0.2',
     author = 'Aliaksei Halachkin',
     author_email = 'aliaksei.h(you know what)gmail.com',
     description='DTW computation',

@@ -3,7 +3,7 @@ import matplotlib.cm as cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 
-from .cydtw import cydtw, Settings
+from cydtw import cydtw, Settings
 
 
 class dtw(cydtw):
@@ -50,12 +50,19 @@ class dtw(cydtw):
                                sharex=ax1,
                                sharey=ax2)  # cost and path
 
-        # axis limit
-        # axis((xmin,xmax,ymin,ymax))
-        ax1.axis((0, self._cost.shape[1], min(self._query), max(self._query)))
 
-        ax2.axis((np.min(self._ref), np.max(self._ref),
-                  0, self._cost.shape[0]))
+        # To display two dimensional array as one dimensional string, we need to convert 2-dim points to 1 dims points
+        # by taking the norm of each points
+
+        if len(self._query.shape) == 1:
+            query_1d = self._query
+            ref_1d = self._ref
+        else:
+            query_1d = np.sum(np.abs(self._query)**2,axis=-1)**(1./2)
+            ref_1d = np.sum(np.abs(self._ref) ** 2, axis=-1) ** (1. / 2)
+
+        ax1.axis((0, len(query_1d), min(query_1d), max(query_1d)))
+        ax2.axis((np.min(ref_1d), np.max(ref_1d), 0, len(ref_1d)))
 
         ax3.axis((-0.5, self._cost.shape[1] - 0.5,
                   self._cost.shape[0] - 0.5, -0.5))
@@ -107,10 +114,24 @@ class dtw(cydtw):
         plt.axis('off')
         plt.show()
 
-
 if __name__ == '__main__':
-    d = dtw(np.random.rand(10), np.random.rand(
-        10), Settings(compute_path=True))
 
+    # Two dimensional
+    arr1 = np.array([[1, 0, 0], [5, 0, 0], [4, 0, 0], [2, 0, 0]])
+    arr2 = np.array([[1, 0, 0], [2, 0, 0], [4, 0, 0], [1, 0, 0], [2, 0, 0]])
+    settings = Settings(compute_path=True)
+    d = dtw(arr1, arr2, settings)
+    print(d.get_cost())
+    print(d.get_path())
+    d.plot_seq_mat_path()
+    plt.show()
+
+    # One dimensional
+    arr1 = np.array([1, 5, 4, 2])
+    arr2 = np.array([1, 2, 4, 1])
+    settings = Settings(compute_path=True)
+    d = dtw(arr1, arr2, settings)
+    print(d.get_cost())
+    print(d.get_path())
     d.plot_seq_mat_path()
     plt.show()

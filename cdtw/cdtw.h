@@ -21,8 +21,8 @@ typedef int bool;
 #define _MANHATTAN 13       /*manhattan distance*/
 
 /*step pattern types, read struct dtw_settings for more info*/
-#define _DPW            20  
-#define _DP1            21  
+#define _DPW            20
+#define _DP1            21
 #define _DP2            22
 #define _DP3            23
 #define _SCP0SYM        24
@@ -34,10 +34,10 @@ typedef int bool;
 #define _SCP2SYM        210
 #define _SCP2ASYM       211
 
-#define _SCBAND         31 
-#define _PALIVAL        32 
-#define _ITAKURA        33 
-#define _PALIVAL_MOD    35 
+#define _SCBAND         31
+#define _PALIVAL        32
+#define _ITAKURA        33
+#define _PALIVAL_MOD    35
 
 
 #define min2(a,b) ((a) < (b) ? a : b)
@@ -51,13 +51,14 @@ typedef int bool;
                     double* cost_matrix,\
                     int i,\
                     int j,\
+                    int ncols,\
                     struct t_dtw_settings* t_s,\
                     int size2, \
-                    double (*dist)(double a, double b)
+                    double (*dist)(double * a, int i, double * b, int j, int ncols)
 
 
 /*pointer to distance function*/
-typedef double (*dist_fptr)(double a, double b);
+typedef double (*dist_fptr)(double * a, int i, double * b, int j, int ncols);
 
 /*pointer to step function*/
 typedef double  (*dp_fptr)(_DP_ARGS);
@@ -85,12 +86,12 @@ struct t_weights{
     double a;
     double b;
     double c;
- }; 
- 
+};
+
 
 /*
  * Structure:  t_path_element
- * -------------------- 
+ * --------------------
  *  Contains dtw settings
  *
  *  int compute_path:   0 - to compute only distance and cost matrix
@@ -105,7 +106,7 @@ struct t_weights{
  *                          21 - dp1                            _DP1
  *                          22 - dp2                            _DP2
  *                          23 - dp3                            _DP3
- *                          24 - Sakoe-Chiba P0 symmetric       _SCP0SYM        
+ *                          24 - Sakoe-Chiba P0 symmetric       _SCP0SYM
  *                          25 - Sakoe-Chiba P0 asymmetric      _SCP0ASYM
  *                          26 - Sakoe-Chiba P1/2 symmetric     _SCP1DIV2SYM
  *                          27 - Sakoe-Chiba P1/2 asymmetric    _SCP1DIV2ASYM
@@ -116,13 +117,13 @@ struct t_weights{
  *                          default - dp2
  *  int window_type:    global constraint(window)
  *                          31 - scband      _SCBAND
- *                          32 - palival     _PALIVAL 
+ *                          32 - palival     _PALIVAL
  *                          33 - itakura     _ITAKURA
  *                          35 - palivan_mod _PALIVAL_MOD
  *                        otherwise - full matrix(without window)
  *
  *  double window_param: param for global constraint
- *  int norm:               normalization 
+ *  int norm:               normalization
  *                          0 - without normalization
  *                          1 - with normalization factor
  *  int offset:   number of extra rows and columns for the cost matrix
@@ -131,42 +132,42 @@ struct t_weights{
 
 struct t_dtw_settings{
 
-        int compute_path;
-        int dist_type;  
-        int dp_type;
-        int window_type;
-        double window_param;
-        int norm;
-        int offset;
-        struct t_weights weights;
+    int compute_path;
+    int dist_type;
+    int dp_type;
+    int window_type;
+    double window_param;
+    int norm;
+    int offset;
+    struct t_weights weights;
 
 };
 
 /*path patterns for step functions*/
 /*
-'Sakoe-Chiba 1/2 sym' 
+'Sakoe-Chiba 1/2 sym'
  [5,-1,-3,-1,-2,-1,-1,-2,-1,-3,-1] <- 5 end points (-1-,3),(-1,-2),...
- [3, 0,-1, 0,-2,-1,-3, 0, 0, 0, 0] <- subpath to the first end point 
- [2, 0,-1,-1,-2, 0, 0, 0, 0, 0, 0],               
+ [3, 0,-1, 0,-2,-1,-3, 0, 0, 0, 0] <- subpath to the first end point
+ [2, 0,-1,-1,-2, 0, 0, 0, 0, 0, 0],
  [1,-1,-1, 0, 0, 0, 0, 0, 0, 0, 0],
  [2,-1, 0,-2,-1, 0, 0, 0, 0, 0, 0],
  [3,-1, 0,-2, 0,-3,-1, 0, 0, 0, 0],
 */
 
 const int dp1_path_pattern[6][11] =       {{ 2, 0,-1,-1, 0, 0, 0, 0, 0, 0, 0},
-                                            {1, 0,-1, 0, 0, 0, 0, 0, 0, 0, 0},
-                                            {1,-1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                            {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                            {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                            {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+                                           {1, 0,-1, 0, 0, 0, 0, 0, 0, 0, 0},
+                                           {1,-1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                                           {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                                           {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                                           {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
 
 
 const int dp2_path_pattern[6][11] =       {{ 3, 0,-1,-1, 0,-1,-1, 0, 0, 0, 0},
-                                            {1, 0,-1, 0, 0, 0, 0, 0, 0, 0, 0},
-                                            {1,-1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                            {1,-1,-1, 0, 0, 0, 0, 0, 0, 0, 0},
-                                            {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                            {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+                                           {1, 0,-1, 0, 0, 0, 0, 0, 0, 0, 0},
+                                           {1,-1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                                           {1,-1,-1, 0, 0, 0, 0, 0, 0, 0, 0},
+                                           {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                                           {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
 
 const int p1div2_path_pattern[6][11] =     {{5,-1,-3,-1,-2,-1,-1,-2,-1,-3,-1},
                                             {3, 0,-1, 0,-2,-1,-3, 0, 0, 0, 0},
@@ -202,7 +203,7 @@ int extra_size(int dp_type);
 
 /*
  * Function:  min3
- * -------------------- 
+ * --------------------
  *  Finds the minimum of 3 doubles
 
  *  double x:    x
@@ -215,7 +216,7 @@ double min3(double x, double y, double z);
 
 /*
  * Function:  min3
- * -------------------- 
+ * --------------------
  *  Finds the minimum of n doubles
 
  *  double *arr:    array
@@ -227,10 +228,10 @@ double min_n(double* arr, int n);
 
 /*
  * Function:  min2idx
- * -------------------- 
+ * --------------------
  *  Finds the minimum of 2 doubles and its position (0 or 1)
 
- *  double a: a 
+ *  double a: a
  *  double b: b
 
  *  returns:  struct t_item, t_item = { min(a,b), position }
@@ -238,10 +239,10 @@ double min_n(double* arr, int n);
 struct t_item min2idx(double a, double b);
 /*
  * Function:  min3idx
- * -------------------- 
+ * --------------------
  *  Finds the minimum of 3 doubles and its position (0,1 or 2)
 
- *  double x: x 
+ *  double x: x
  *  double y: y
  *  double z: z
 
@@ -251,7 +252,7 @@ struct t_item min3idx(double x, double y, double z);
 
 /*
  * Function:  min3idx
- * -------------------- 
+ * --------------------
  *  Finds the minimum of n doubles and its position (0..n-1)
 
  *  double x: array
@@ -263,21 +264,21 @@ struct t_item min_nidx(double* arr, int n);
 
 /*
  * Function:  dpw
- * -------------------- 
- 
- * NOTE: ALL STEP FUNCTIONS have the same args defined in macro 
- *_DP_ARGS(cdtw.h). Step functions like step_pattern_type and 
- * step_pattern_typedir are pretty similar, step_pattern_type are used in 
- * computing dtw without path(without traceback). step_pattern_typedir are 
- * used in computing dtw with path(traceback) 
+ * --------------------
+
+ * NOTE: ALL STEP FUNCTIONS have the same args defined in macro
+ *_DP_ARGS(cdtw.h). Step functions like step_pattern_type and
+ * step_pattern_typedir are pretty similar, step_pattern_type are used in
+ * computing dtw without path(without traceback). step_pattern_typedir are
+ * used in computing dtw with path(traceback)
 
  *  Step patern dpw - weights:
- *  min(      
- *      cost_matrix[i][j-1]   +   a*d(r[i],q[j])    
-        cost_matrix[i-1][j]   +   b*d(r[i],q[j]),    
+ *  min(
+ *      cost_matrix[i][j-1]   +   a*d(r[i],q[j])
+        cost_matrix[i-1][j]   +   b*d(r[i],q[j]),
         cost_matrix[i-1][j-1] +   c*d(r[i],q[j])
        )
- * where a,b,c are weights 
+ * where a,b,c are weights
  *
  * double* ref: reference sequence
  * double* query: query sequence
@@ -285,7 +286,7 @@ struct t_item min_nidx(double* arr, int n);
  * int i: row index of the cost matrix
  * int j: column index of the cost matrix
  * int offset: extra size of the cost matrix
- * int size2:  cost matrix columns count 
+ * int size2:  cost matrix columns count
  * double (*dist)(double a, double b): poiter to distance function
 
  * returns:  double, value to assign cost_matrix[i][j]
@@ -294,11 +295,11 @@ double dpw(_DP_ARGS);
 
 /*
  * Function:  dp1
- * -------------------- 
+ * --------------------
  *  Step patern dp1:
- *  min(      
- *      cost_matrix[i][j-1]   +   d(r[i],q[j])    
-        cost_matrix[i-1][j]   +   d(r[i],q[j]),    
+ *  min(
+ *      cost_matrix[i][j-1]   +   d(r[i],q[j])
+        cost_matrix[i-1][j]   +   d(r[i],q[j]),
         cost_matrix[i-1][j-1] + 2*d(r[i],q[j])
        )
  * see doc for the dpw
@@ -308,11 +309,11 @@ double dp1(_DP_ARGS);
 
 /*
  * Function:  dp2
- * -------------------- 
+ * --------------------
  *  Step patern dp2:
- *  min(      
- *      cost_matrix[i][j-1]   +   d(r[i],q[j])    
- *      cost_matrix[i-1][j]   +   d(r[i],q[j]),    
+ *  min(
+ *      cost_matrix[i][j-1]   +   d(r[i],q[j])
+ *      cost_matrix[i-1][j]   +   d(r[i],q[j]),
  *      cost_matrix[i-1][j-1] +   d(r[i],q[j])
  *      )
  * see doc for the dpw
@@ -321,11 +322,11 @@ double dp2(_DP_ARGS);
 
 /*
  * Function:  dp3
- * -------------------- 
+ * --------------------
  *  Step patern dp3:
- *  min(      
- *      cost_matrix[i][j-1]   +   d(r[i],q[j])    
- *      cost_matrix[i-1][j]   +   d(r[i],q[j]),    
+ *  min(
+ *      cost_matrix[i][j-1]   +   d(r[i],q[j])
+ *      cost_matrix[i-1][j]   +   d(r[i],q[j]),
  *      )
  * see doc for the dpw
 */
@@ -333,35 +334,35 @@ double dp3(_DP_ARGS);
 /* ------------------------usual for traceback-----------------*/
 /*
  * Function:  dp1dir
- * -------------------- 
+ * --------------------
  * see doc for the dpw
 */
 struct t_item dpwdir(_DP_ARGS);
 
 /*
  * Function:  dp1dir
- * -------------------- 
+ * --------------------
  * see doc for the dpw
 */
 struct t_item dp1dir(_DP_ARGS);
 
 /*
  * Function:  dp2dir
- * -------------------- 
+ * --------------------
  * see doc for the dpw,dp2
 */
 struct t_item dp2dir(_DP_ARGS);
 
 /*
  * Function:  dp3dir
- * -------------------- 
+ * --------------------
  * see doc for the dpw,dp3
 */
 struct t_item dp3dir(_DP_ARGS);
 /*-------------------Sakoe-Chiba classifikaction---------------*/
 /*
  * Function:  p0sym
- * -------------------- 
+ * --------------------
  * Sakoe-Chiba classification p = 0, symmetric step pattern
  * This function is alias for the dp1
  * see doc for the dpw
@@ -370,12 +371,12 @@ double p0_sym(      _DP_ARGS);
 
 /*
  * Function:  p0asym
- * -------------------- 
+ * --------------------
  * Sakoe-Chiba classification p = 0, asymmetric step pattern:
- *  min(      
- *       cost_matrix[i][j-1]   +   0    
- *       cost_matrix[i-1][j]   +   d(r[i],q[j]), 
- *       cost_matrix[i-1][j-1] +   d(r[i],q[j]),   
+ *  min(
+ *       cost_matrix[i][j-1]   +   0
+ *       cost_matrix[i-1][j]   +   d(r[i],q[j]),
+ *       cost_matrix[i-1][j-1] +   d(r[i],q[j]),
  *      )
  * see doc for the dpw
 */
@@ -383,13 +384,13 @@ double p0_asym(     _DP_ARGS);
 
 /*
  * Function:  p1div2_sym
- * -------------------- 
+ * --------------------
  * Sakoe-Chiba classification p = 0.5, symmetric step pattern:
- *  min(      
+ *  min(
  *      cost_matrix[i-1][j-3] + 2d(r[i],q[j-2]) + d(r[i],q[j-1]) + d(r[i],q[j]),
- *      cost_matrix[i-1][j-2] + 2d(r[i],q[j-1]) + d(r[i],q[j]),     
- *      cost_matrix[i-1][j-1] + 2d(r[i],q[j]), 
- *      cost_matrix[i-2][j-1] + 2d(r[i-1],q[j]) + d(r[i],q[j]), 
+ *      cost_matrix[i-1][j-2] + 2d(r[i],q[j-1]) + d(r[i],q[j]),
+ *      cost_matrix[i-1][j-1] + 2d(r[i],q[j]),
+ *      cost_matrix[i-2][j-1] + 2d(r[i-1],q[j]) + d(r[i],q[j]),
  *      cost_matrix[i-3][j-1] + 2d(r[i-2],q[j]) + d(r[i-1],q[j]) + d(r[i],q[j])
  *      )
  * see doc for the dpw
@@ -398,13 +399,13 @@ double p1div2_sym(  _DP_ARGS);
 
 /*
  * Function:  p1div2_asym
- * -------------------- 
+ * --------------------
  * Sakoe-Chiba classification p = 0.5, asymmetric step pattern:
- *  min(      
- *   cost_matrix[i-1][j-3] + (d(r[i],q[j-2]) + d(r[i],q[j-1]) + d(r[i],q[j]))/3 
- *   cost_matrix[i-1][j-2] + (d(r[i],q[j-1]) + d(r[i],q[j]))/2,     
- *   cost_matrix[i-1][j-1] + d(r[i],q[j]), 
- *   cost_matrix[i-2][j-1] + d(r[i-1],q[j])  + d(r[i],q[j]), 
+ *  min(
+ *   cost_matrix[i-1][j-3] + (d(r[i],q[j-2]) + d(r[i],q[j-1]) + d(r[i],q[j]))/3
+ *   cost_matrix[i-1][j-2] + (d(r[i],q[j-1]) + d(r[i],q[j]))/2,
+ *   cost_matrix[i-1][j-1] + d(r[i],q[j]),
+ *   cost_matrix[i-2][j-1] + d(r[i-1],q[j])  + d(r[i],q[j]),
  *   cost_matrix[i-3][j-1] + d(r[i-2],q[j])  + d(r[i-1],q[j]) + d(r[i],q[j])
  *      )
  * see doc for the dpw
@@ -413,12 +414,12 @@ double p1div2_asym( _DP_ARGS);
 
 /*
  * Function:  p1_sym
- * -------------------- 
+ * --------------------
  * Sakoe-Chiba classification p = 1, symmetric step pattern:
- *  min(        
- *      cost_matrix[i-1][j-2] + 2d(r[i],q[j-1]) + d(r[i],q[j]),     
- *      cost_matrix[i-1][j-1] + 2d(r[i],q[j]), 
- *      cost_matrix[i-2][j-1] + 2d(r[i-1],q[j]) + d(r[i],q[j]), 
+ *  min(
+ *      cost_matrix[i-1][j-2] + 2d(r[i],q[j-1]) + d(r[i],q[j]),
+ *      cost_matrix[i-1][j-1] + 2d(r[i],q[j]),
+ *      cost_matrix[i-2][j-1] + 2d(r[i-1],q[j]) + d(r[i],q[j]),
  *      )
  * see doc for the dpw
 */
@@ -426,12 +427,12 @@ double p1_sym(      _DP_ARGS);
 
 /*
  * Function:  p1_asym
- * -------------------- 
+ * --------------------
  * Sakoe-Chiba classification p = 1, asymmetric step pattern:
- *  min(        
- *      cost_matrix[i-1][j-2] + (d(r[i],q[j-1]) + d(r[i],q[j]))/2,     
- *      cost_matrix[i-1][j-1] + d(r[i],q[j]), 
- *      cost_matrix[i-2][j-1] + d(r[i-1],q[j]) + d(r[i],q[j]), 
+ *  min(
+ *      cost_matrix[i-1][j-2] + (d(r[i],q[j-1]) + d(r[i],q[j]))/2,
+ *      cost_matrix[i-1][j-1] + d(r[i],q[j]),
+ *      cost_matrix[i-2][j-1] + d(r[i-1],q[j]) + d(r[i],q[j]),
  *      )
  * see doc for the dpw
 */
@@ -439,14 +440,14 @@ double p1_asym(     _DP_ARGS);
 
 /*
  * Function:  p2_sym
- * -------------------- 
+ * --------------------
  * Sakoe-Chiba classification p = 2, symmetric step pattern:
- *  min(        
+ *  min(
  *     cost_matrix[i-2][j-3] + 2d(r[i-1],q[j-2]) +
  *                             2d(r[i],q[j-1])   +
  *                             d(r[i],q[j]),
  *
- *     cost_matrix[i-1][j-1] + 2d(r[i],q[j]), 
+ *     cost_matrix[i-1][j-1] + 2d(r[i],q[j]),
  *
  *     cost_matrix[i-3][j-2] + 2d(r[i-2],q[j-1]) +
  *                             2d(r[i-1],q[j])   +
@@ -458,14 +459,14 @@ double p2_sym(      _DP_ARGS);
 
 /*
  * Function:  p2_asym
- * -------------------- 
+ * --------------------
  * Sakoe-Chiba classification p = 2, asymmetric step pattern:
- *  min(        
+ *  min(
  *     cost_matrix[i-2][j-3] + 2( d(r[i-1],q[j-2]) +
  *                                d(r[i],q[j-1])   +
  *                                d(r[i],q[j]) ),
  *
- *     cost_matrix[i-1][j-1] + d(r[i],q[j]), 
+ *     cost_matrix[i-1][j-1] + d(r[i],q[j]),
  *
  *     cost_matrix[i-3][j-2] + d(r[i-2],q[j-1]) +
  *                             d(r[i-1],q[j])   +
@@ -477,7 +478,7 @@ double p2_asym(     _DP_ARGS);
 /*---------------step patterns for traceback-------------------*/
 /*
  * Function:  p0_symdir
- * -------------------- 
+ * --------------------
  * Sakoe-Chiba classification p = 0, symmetric step pattern:
  * see doc for the p0_sym, dp1
 */
@@ -485,7 +486,7 @@ struct t_item p0_symdir(        _DP_ARGS);
 
 /*
  * Function:  p0_asymdir
- * -------------------- 
+ * --------------------
  * Sakoe-Chiba classification p = 0, asymmetric step pattern:
  * see doc for the p0_asym, dp1
 */
@@ -493,7 +494,7 @@ struct t_item p0_asymdir(       _DP_ARGS);
 
 /*
  * Function:  p1div2_symdir
- * -------------------- 
+ * --------------------
  * Sakoe-Chiba classification p = 0.5, symmetric step pattern:
  * see doc for the p1div2_sym, dp1
 */
@@ -501,7 +502,7 @@ struct t_item p1div2_symdir(    _DP_ARGS);
 
 /*
  * Function:  p1div2_asymdir
- * -------------------- 
+ * --------------------
  * Sakoe-Chiba classification p = 0.5, asymmetric step pattern:
  * see doc for the p1div2_asym, dp1
 */
@@ -509,7 +510,7 @@ struct t_item p1div2_asymdir(   _DP_ARGS);
 
 /*
  * Function:  p1_symdir
- * -------------------- 
+ * --------------------
  * Sakoe-Chiba classification p = 1, symmetric step pattern:
  * see doc for the p1_sym, dp1
 */
@@ -517,7 +518,7 @@ struct t_item p1_symdir(        _DP_ARGS);
 
 /*
  * Function:  p1_asymdir
- * -------------------- 
+ * --------------------
  * Sakoe-Chiba classification p = 1, asymmetric step pattern:
  * see doc for the p1_asym, dp1
 */
@@ -525,7 +526,7 @@ struct t_item p1_asymdir(     _DP_ARGS);
 
 /*
  * Function:  p2_symdir
- * -------------------- 
+ * --------------------
  * Sakoe-Chiba classification p = 2, symmetric step pattern:
  * see doc for the p2_sym, dp1
 */
@@ -533,7 +534,7 @@ struct t_item p2_symdir(        _DP_ARGS);
 
 /*
  * Function:  p2_asymdir
- * -------------------- 
+ * --------------------
  * Sakoe-Chiba classification p = 2, asymmetric step pattern:
  * see doc for the p2_asym, dp1
 */
@@ -543,9 +544,9 @@ struct t_item p2_asymdir(       _DP_ARGS);
 
 /*
  * Function:  scband
- * -------------------- 
- *  Sakoe-Chiba band global constraint. 
- *  NOTE: This function is redundant at the moment(scband is unnecessary, when 
+ * --------------------
+ *  Sakoe-Chiba band global constraint.
+ *  NOTE: This function is redundant at the moment(scband is unnecessary, when
  *  there exists palival window + there is a faster for-loop implementation)
  *  int i:    row index
  *  int j:    column index
@@ -559,10 +560,10 @@ bool scband(     int i, int j, double r, double I, double J);
 /*
  * Function: palival
  * --------------------
- *  Palival global constraint, it is similar to scband, but adapts to the 
- *  length of sequences. 
- *  NOTE: This function is redundant at the moment, there is a faster 
- *  for-loop implementation. 
+ *  Palival global constraint, it is similar to scband, but adapts to the
+ *  length of sequences.
+ *  NOTE: This function is redundant at the moment, there is a faster
+ *  for-loop implementation.
  *  int i:    row index
  *  int j:    column index
  *  double r: width of the window (abolute value)
@@ -575,11 +576,11 @@ bool palival(    int i, int j, double r, double I, double J);
 /*
  * Function: palival_mod
  * --------------------
- *  Palival global constraint, it is similar to scband, but but adapts to the 
- *  length of sequences. Difference between palival and palival_mod is only in 
- *  the width definition. 
- *  NOTE: This function is redundant at the moment, there is a faster 
- *  for-loop implementation. 
+ *  Palival global constraint, it is similar to scband, but but adapts to the
+ *  length of sequences. Difference between palival and palival_mod is only in
+ *  the width definition.
+ *  NOTE: This function is redundant at the moment, there is a faster
+ *  for-loop implementation.
  *  int i:    row index
  *  int j:    column index
  *  double r: width of the window(fraction of the reference sequence length)
@@ -590,7 +591,7 @@ bool palival(    int i, int j, double r, double I, double J);
 bool itakura(    int i, int j, double k, double I, double J);
 
 /*
- * Function:  itakura 
+ * Function:  itakura
  * --------------------
  *  Itakura global constraints
  *  int i:    row index
@@ -609,34 +610,36 @@ bool palival_mod(int i, int j, double p, double I, double J);
  * returns: always true(1)
  */
 bool nowindow(   int i, int j, double k, double I, double J);
- /*------------------------distance function------------------- */
+/*------------------------distance function------------------- */
 
 /*
  * Function:  manhattan
  * --------------------
- *  helps in computing manhattan distance 
- *  double a:  1 dimensional point  
- *  double b:  1 dimensional point  
- *  returns: double, manhattan distance between two dimensional points 
+ *  helps in computing manhattan distance
+ *  double a:  1 or 2 dimensional point
+ *  double b:  1 or 2 dimensional point
+ *  int ncols: number of columns of the second dimension (1 means 1 dimensional array)
+ *  returns: double, manhattan distance between two dimensional points
  */
-double manhattan(double a, double b); 
+double manhattan(double *a, int i, double *b, int j, int ncols);
 
 /*
  * Function:  euclid
  * --------------------
  *  Euclidean distance helper
- *  double a:  1 dimensional point  
- *  double b:  1 dimensional point  
- *  returns: double, (a-b)^2 
+ *  double a:  1 or 2 dimensional point
+ *  double b:  1 or 2 dimensional point
+ *  int ncols: number of columns of the second dimension (1 means 1 dimensional array)
+ *  returns: double, (a-b)^2
  */
-double euclid(double a, double b);
+double euclid(double *a, int i, double *b, int j, int ncols);
 /*----------------------------------------------------------------------------*/
 /* ------------------------------- interface -------------------------------- */
 /*----------------------------------------------------------------------------*/
 /*
  * Function:  choose_dist
  * --------------------
- *  Chooses right distance function(euclid or euclid_squared) 
+ *  Chooses right distance function(euclid or euclid_squared)
  *  int dist_type: dtw_settings.dist_type [_MANHATTAN, _EUCLID, _EUCLID_SQUARED]
  *  returns: dist_fptr, pointer to a distance function
  */
@@ -672,20 +675,20 @@ window_fptr choose_window(struct t_dtw_settings* dtw_settings);
 /*
  * Function:  choose_window_param
  * --------------------
- *  Computes and return parameter for the window function 
+ *  Computes and return parameter for the window function
  *  struct t_dtw_settings *dtw_settings: structure with dtw settings
  *  int len_ref: length of the reference sequence
  *  int len_query: length of the query sequence
  *  returns: double p, window parameter
  */
-double choose_window_param(struct t_dtw_settings *dtw_settings, 
-                           int len_ref,    
+double choose_window_param(struct t_dtw_settings *dtw_settings,
+                           int len_ref,
                            int len_query);
 
 /*
  * Function:  choose_path_pattern
  * --------------------
- *  Chooses right path_patterns(2d array) based on the current step function 
+ *  Chooses right path_patterns(2d array) based on the current step function
  *  struct t_dtw_settings *dtw_settings: structure with dtw settings
  *  returns: const int[7][11], path_pattern
  */
@@ -697,25 +700,25 @@ const int (*choose_path_pattern(struct t_dtw_settings dtw_settings))[11];
 /*
  * Function:  create_path_from_pattern
  * --------------------
- *  Compute full path from path_points and path_pattern. This function is 
- *  necessary for the multistep step functions (like p1div2_sym), and also 
+ *  Compute full path from path_points and path_pattern. This function is
+ *  necessary for the multistep step functions (like p1div2_sym), and also
  *  to transform "directions" to coordinates(matrix indices).
  *  const int pattern[6][11] : path pattern (see cdtw.h)
  *  int len_ref: length of the reference sequence
  *  int len_query: length of the query sequence
- *  int* path_points: path points as array of directions, where direction is 
- *                    is idx returned by dp_dir functions. 
+ *  int* path_points: path points as array of directions, where direction is
+ *                    is idx returned by dp_dir functions.
  *  int  path_points_count: len of path points = len_ref + len_query
  *  struct t_path_element* path: path array
  *  returns: int, true length of the constructed path.
  */
-int create_path_from_pattern(const int pattern[6][11], 
-                                    int len_ref,
-                                    int len_query,
-                                    int* path_points,
-                                    int  path_points_count,
-                                    struct t_path_element* path
-                                    );
+int create_path_from_pattern(const int pattern[6][11],
+                             int len_ref,
+                             int len_query,
+                             int* path_points,
+                             int  path_points_count,
+                             struct t_path_element* path
+);
 
 /*
  * Function:  direct_matrix_to_path_points
@@ -728,21 +731,21 @@ int create_path_from_pattern(const int pattern[6][11],
  * const int pattern[6][11]:path pattern
  * returns: path_points length
  */
-int direct_matrix_to_path_points(int* dir_matrix, int *path_points, 
-                     int len_ref, int len_query,const int pattern[6][11]);
+int direct_matrix_to_path_points(int* dir_matrix, int *path_points,
+                                 int len_ref, int len_query,const int pattern[6][11]);
 
 /*
  * Function:  fill_matrix
  * --------------------
- * Prepares cost matrix. Set extra rows and columns to INFINITY. Set all 
+ * Prepares cost matrix. Set extra rows and columns to INFINITY. Set all
                          matrix to INFINITY, if there is a window
 
  * double *matrix:      pointer to cost matrix
  * double* query:       query sequence
  * int len_ref:         length of the reference sequence
  * int len_query:       length of the query sequence
- * struct t_dtw_settings dtw_settings: structure with dtw settings 
- * returns: void 
+ * struct t_dtw_settings dtw_settings: structure with dtw settings
+ * returns: void
  */
 void fill_matrix(double *matrix, int len_ref, int len_query, struct t_dtw_settings dtw_settings);
 
@@ -755,18 +758,20 @@ void fill_matrix(double *matrix, int len_ref, int len_query, struct t_dtw_settin
  * double* query:       query sequence
  * int len_ref:         length of the reference sequence
  * int len_query:       length of the query sequence
+ * int ncols:           number of columns of the second dimension (1 means 1 dimensional array)
  * dist_fptr dist:      pointer to a distance function
  * dp_fptr dp:          pointer to a step function
  * window_fptr window:  pointer to a window function
  * double p:            window parameter
- * double *cost_matrix: cost matrix 
- * struct t_dtw_settings dtw_settings: structure with dtw settings 
- * returns: doube, distance between reference and query sequences 
+ * double *cost_matrix: cost matrix
+ * struct t_dtw_settings dtw_settings: structure with dtw settings
+ * returns: doube, distance between reference and query sequences
  */
 double cdtwnopath(double* ref,
                   double* query,
                   int len_ref,
                   int len_query,
+                  int ncols,
                   dist_fptr dist,
                   dp_fptr dp,
                   window_fptr window,
@@ -782,50 +787,54 @@ double cdtwnopath(double* ref,
  * double* query:       query sequence
  * int len_ref:         length of the reference sequence
  * int len_query:       length of the query sequence
+ * int ncols:           number of columns of the second dimension (1 means 1 dimensional array)
  * dist_fptr dist:      pointer to a distance function
  * dpdir_fptr dp_dir:   pointer to a step function
  * window_fptr window:  pointer to a window function
  * double p:            window parameter
- * double *cost_matrix: cost matrix 
+ * double *cost_matrix: cost matrix
  * int *dir_matrix:     direction matrix
- * struct t_dtw_settings dtw_settings: structure with dtw settings 
- * returns: doube, distance between reference and query sequences 
+ * struct t_dtw_settings dtw_settings: structure with dtw settings
+ * returns: doube, distance between reference and query sequences
  */
 double cdtwpath(double* ref,
-                  double* query,
-                  int len_ref,
-                  int len_query,
-                  dist_fptr dist,
-                  dpdir_fptr dp_dir,
-                  window_fptr window,
-                  double p, //window param
-                  double *cost_matrix,
-                  int *dir_matrix, 
-                  struct t_dtw_settings dtw_settings);
+                double* query,
+                int len_ref,
+                int len_query,
+                int ncols,
+                dist_fptr dist,
+                dpdir_fptr dp_dir,
+                window_fptr window,
+                double p, //window param
+                double *cost_matrix,
+                int *dir_matrix,
+                struct t_dtw_settings dtw_settings);
 
 
 /*
  * Function:  cdtw
  * --------------------
- * Dynamic Time Warping 
+ * Dynamic Time Warping
  * This fuction is main entry for the cdtw
  * double* ref:                  reference sequence
  * double* query:               query sequence
  * int len_ref:                 length of the reference sequence
  * int len_query:               length of the query sequence
- * double *cost_matrix:         cost matrix, pointer to an allocated memory for 
+ * int ncols:                   number of columns of the second dimension (1 means 1 dimensional array)
+ * double *cost_matrix:         cost matrix, pointer to an allocated memory for
                                 the 2 dimensional matrix. (with extra size)
- * struct t_path_element* path: warping path, pointer to an allocated array,  
+ * struct t_path_element* path: warping path, pointer to an allocated array,
                                 size is maximum possible path length:
                                 len_ref + len_query
  * int true_path_len:           length of the computed warping path
- * struct t_dtw_settings dtw_settings: structure with dtw settings 
- * returns: doube, distance between reference and query sequences 
+ * struct t_dtw_settings dtw_settings: structure with dtw settings
+ * returns: doube, distance between reference and query sequences
  */
 double cdtw(double* ref,
             double* query,
             int len_ref,
-            int len_query,  
+            int len_query,
+            int ncols,
             double* cost_matrix,
             struct t_path_element* path, /*path maximum length = len_ref + len_query*/
             int *true_path_len,   /*actual computed path length*/
@@ -837,7 +846,8 @@ double cdtw(double* ref,
 /*helpers*/
 void print_matrix(double* matrix, int size1, int size2);
 void print_intarr(int* arr, int n);
-
+void print_floatarr(float* arr, int n);
+void print_doublearr(double* arr, int n);
 
 
 #endif

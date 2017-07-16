@@ -6,11 +6,10 @@ cimport numpy as np
 
 np.import_array()
 
-from stepstr import*
+from stepstr import *
 
 # import c fuctions
 cdef extern from "cdtw.c":
-
     cdef int extra_size(int dp_type)
 
     cdef struct t_path_element:
@@ -32,13 +31,14 @@ cdef extern from "cdtw.c":
         int offset
         t_weights weights
 
-    cdef double cdtw(double * ref,
-                     double * query,
+    cdef double cdtw(double *ref,
+                     double *query,
                      int len_ref,
                      int len_query,
-                     double * cost_matrix,
-                     t_path_element * path,
-                     int * true_path_len,
+                     int ncols,
+                     double *cost_matrix,
+                     t_path_element *path,
+                     int *true_path_len,
                      t_dtw_settings dtw_settings)
 
 # macros
@@ -64,8 +64,7 @@ cdef enum:
     _ITAKURA = 33
     _PALIVAL_MOD = 35
 
-
-cdef path_wrapper(t_path_element * cpath, int cpath_len):
+cdef path_wrapper(t_path_element *cpath, int cpath_len):
     """Path wrapper
 
     Converts path C array to python list of tuples.
@@ -84,19 +83,18 @@ cdef path_wrapper(t_path_element * cpath, int cpath_len):
         path.append((cpath[cpath_len - m - 1].i, cpath[cpath_len - m - 1].j))
     return path
 
-class Setting:
 
+class Setting:
     def __init__(self):
         self._types = {}
         self._cur_type = str()
-
 
     def set_type(self, itype):
         """set type method"""
         if itype in self._types.keys():
             self._cur_type = itype
         else:
-            print "Unknown type, possible types: \n"  + str(self._types.keys())
+            print "Unknown type, possible types: \n" + str(self._types.keys())
 
     def get_cur_type(self):
         """get type method"""
@@ -111,13 +109,10 @@ class Setting:
 
     def __str__(self):
         """__str__ method"""
-        return str(self._cur_type)      
-
-
+        return str(self._cur_type)
 
 
 class Dist(Setting):
-
     """Distance type class
     Contains dintance types for dynamic time wapring algorithm. There are three 
     available distance functions at the moment: 
@@ -138,7 +133,6 @@ class Dist(Setting):
 
 
 class Step(Setting):
-
     """Step class
 
     Class containts different step patterns for dynamic time warping algorithm.
@@ -160,19 +154,16 @@ class Step(Setting):
     You can see step pattern definition using print_step method
     """
 
-    def __init__(self, step='dp2', weights = [1,1,1]):
+    def __init__(self, step='dp2', weights = [1, 1, 1]):
         self._cur_type = step
-        self._types = { 'dpw': _DPW, 'dp1': _DP1, 'dp2': _DP2, 'dp3': _DP3,
+        self._types = {'dpw': _DPW, 'dp1': _DP1, 'dp2': _DP2, 'dp3': _DP3,
                        'p0sym': _SCP0SYM, 'p0asym': _SCP0ASYM,
                        'p05sym': _SCP1DIV2SYM, 'p05asym': _SCP1DIV2ASYM,
-                       'p1sym':  _SCP1SYM, 'p1asym': _SCP1ASYM,
+                       'p1sym': _SCP1SYM, 'p1asym': _SCP1ASYM,
                        'p2sym': _SCP2SYM, 'p2asym': _SCP2ASYM}
         self._weights = weights
 
-
-
-
-    def set_weights(self,w):
+    def set_weights(self, w):
         self._weights = w
 
     def get_weights(self):
@@ -186,14 +177,13 @@ class Step(Setting):
 
 
 class Window(Setting):
-
     """Global constraint class.
     Available constraints: scband, itakura, palival, itakura_mod
     """
 
     def __init__(self, window='nowindow', param=0.0):
         self._cur_type = window
-        self._types = {'scband': _SCBAND, 'palival':     _PALIVAL,
+        self._types = {'scband': _SCBAND, 'palival': _PALIVAL,
                        'itakura': _ITAKURA, 'palival_mod': _PALIVAL_MOD, 'nowindow': 0}
 
         self._param = param
@@ -209,7 +199,6 @@ class Window(Setting):
 
 
 class Settings:
-
     """
     class with dtw settings
     """
@@ -221,7 +210,6 @@ class Settings:
                  param=0.0,
                  norm=False,
                  compute_path=False):
-
         self.dist = Dist(dist)
         self.step = Step(step)
         self.window = Window(window, param)
@@ -230,13 +218,13 @@ class Settings:
 
     def __str__(self):
         return str('distance function: ' + str(self.dist) + '\n'
-                   'local constraint: ' + str(self.step) + '\n'
-                   'window: ' + str(self.window) + '\n'
-                   'normalization: ' + str(self.norm) + '\n')
+                                                            'local constraint: ' + str(self.step) + '\n'
+                                                                                                    'window: ' + str(
+            self.window) + '\n'
+                           'normalization: ' + str(self.norm) + '\n')
 
 
 class cydtw:
-
     """
     Main entry, dtw algorithm
     settings is optional parameter
@@ -250,64 +238,98 @@ class cydtw:
         self._path = [()]
         self._dtw(ref, query, settings)
 
+    @staticmethod
+    def flatten_padded(arr, offset):
+        arr_shape = np.shape(arr)
+        ndims = len(arr_shape)
+        if ndims > 2:
+            raise Exception('Currently only supports one or two dimensional sequences')
+
+        if ndims == 1:
+            pad_size = (offset, )
+            return np.hstack((np.zeros(pad_size), arr)).ravel(order='C')
+        else:
+            pad_size = (offset, arr_shape[1])
+            return np.vstack((np.zeros(pad_size), arr)).ravel(order='C')
+
+
     def _dtw(self, ref, query, settings):
+        if not isinstance(ref, np.ndarray) or not isinstance(query, np.ndarray):
+            raise Exception('Sequences must be numpy arrays')
+
         # sequence control
         if len(ref) == 0 or len(query) == 0:
-            return
+            raise Exception('Length of both sequences must be > 0')
+
+        ref_shape = np.shape(ref)
+        qry_shape = np.shape(query)
+
+        if len(ref_shape) != len(qry_shape):
+            raise Exception('Two sequences must have the same number of dimensions')
+
+        ndims = len(ref_shape)
+
+        if ndims > 2:
+            raise Exception('Currently only supports one or two dimensional sequences')
+
+        if ndims == 2 and ref_shape[1] != qry_shape[1]:
+            raise Exception('Shapes of two sequence can only differ in the first dimension')
+
         # map python settings to C structure dtw_settings functions
         cdef t_dtw_settings c_dtw_settings
-        c_dtw_settings.compute_path = <int > settings.compute_path
-        c_dtw_settings.dist_type = <int > settings.dist.get_cur_type_code()
-        c_dtw_settings.dp_type = <int > settings.step.get_cur_type_code()
-        c_dtw_settings.window_type = <int > settings.window.get_cur_type_code()
-        c_dtw_settings.window_param = <double > settings.window.get_param()
-        c_dtw_settings.norm = <int > settings.norm
+        c_dtw_settings.compute_path = <int> settings.compute_path
+        c_dtw_settings.dist_type = <int> settings.dist.get_cur_type_code()
+        c_dtw_settings.dp_type = <int> settings.step.get_cur_type_code()
+        c_dtw_settings.window_type = <int> settings.window.get_cur_type_code()
+        c_dtw_settings.window_param = <double> settings.window.get_param()
+        c_dtw_settings.norm = <int> settings.norm
         c_dtw_settings.offset = extra_size(c_dtw_settings.dp_type)
-        c_dtw_settings.weights.a = <double>settings.step.get_weights()[0]
-        c_dtw_settings.weights.b = <double>settings.step.get_weights()[1]
-        c_dtw_settings.weights.c = <double>settings.step.get_weights()[2]
+        c_dtw_settings.weights.a = <double> settings.step.get_weights()[0]
+        c_dtw_settings.weights.b = <double> settings.step.get_weights()[1]
+        c_dtw_settings.weights.c = <double> settings.step.get_weights()[2]
 
         # allocate path
-        cdef t_path_element * cpath = <t_path_element * >malloc(sizeof(
-                               t_path_element)*(< int > ( len(ref) + len(query))))
+        cdef t_path_element *cpath = <t_path_element *> malloc(sizeof(
+                                                               t_path_element) * (<int> (len(ref) + len(query))))
 
         # init true path length
         cdef int cpath_len = 0
+        len_ref = ref_shape[0]
+        len_qry = qry_shape[0]
+        offset = c_dtw_settings.offset
 
-        # expand ref and query
-        if isinstance(ref, np.ndarray) and isinstance(query, np.ndarray):
-            ref = np.hstack((np.zeros((c_dtw_settings.offset)), ref))
-            query = np.hstack((np.zeros((c_dtw_settings.offset)), query))
+        if ndims == 1:
+            ncols = 1
         else:
-            ref = [0 for _ in range(c_dtw_settings.offset)] + ref
-            query = [0 for _ in range(c_dtw_settings.offset)] + query
+            ncols = ref_shape[1]
 
         # init numpy arrays
         cdef np.ndarray[np.float_t, ndim = 1] cref
         cdef np.ndarray[np.float_t, ndim = 1] cquery
         cdef np.ndarray[np.float_t, ndim = 2] cost
 
-        # contiguous c array in memory
-        cref = np.ascontiguousarray(ref, dtype=np.float)
-        cquery = np.ascontiguousarray(query, dtype=np.float)
+        # expand ref and query and ravel as one dimensional, contiguous c arrays in memory
+        cref = self.flatten_padded(ref, offset)
+        cquery = self.flatten_padded(query, offset)
 
         # init cost matrix
-        cost = np.zeros((cref.shape[0], cquery.shape[0]),
+        cost = np.zeros((len_ref + offset, len_qry + offset),
                         dtype=np.float)
         # call cdtw function (in cdtw.c)
-        self._dist =  cdtw( < double*>cref.data,
-                           < double * >cquery.data,
-                           < int > len(ref) - c_dtw_settings.offset,
-                           < int > len(query) - c_dtw_settings.offset,
-                           < double*>&cost[0, 0],
-                           cpath,
-                           & cpath_len,
-                           c_dtw_settings);
+        self._dist = cdtw(<double*> cref.data,
+                          <double *> cquery.data,
+                          <int> len_ref,
+                          <int> len_qry,
+                          <int> ncols,
+                          <double*> &cost[0, 0],
+                          cpath,
+                          &cpath_len,
+                          c_dtw_settings)
 
-        self._cost = cost[c_dtw_settings.offset:, c_dtw_settings.offset:]
+        self._cost = cost[offset:, offset:]
 
         # convert c path to python path
-        if(settings.compute_path):
+        if (settings.compute_path):
             self._path = path_wrapper(cpath, cpath_len)
 
         # cleaning
