@@ -4,8 +4,8 @@
 
 import numpy as np
 
-from cdtw.cydtw import Settings
-from cdtw.pydtw import *
+from ced.cyed import Settings
+from ced.pyed import *
 
 class TestSuite:
     """

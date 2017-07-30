@@ -1,17 +1,22 @@
-import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+import matplotlib.pyplot as plt
 import numpy as np
 
-from cydtw import cydtw, Settings
+from cyed import cyed, Settings
 
 
-class dtw(cydtw):
+class ed(cyed):
 
-    def __init__(self, ref, query, settings=Settings()):
-        cydtw.__init__(self, ref, query, settings)
+    def __init__(self, ref, query, sigma=None, settings=Settings()):
+        if sigma is None:
+            if settings.dist.is_sigma_required():
+                raise Exception('This type of edit distance algorithm requires sigmas')
+            sigma = np.zeros((np.shape(ref)[1],), dtype=np.double)
+
+        cyed.__init__(self, ref, query, sigma, settings)
         self._ref = ref
         self._query = query
+        self._sigma = sigma
 
     def plot_mat_path(self, colormap=cm.Greys_r):
         ils = []
@@ -117,21 +122,38 @@ class dtw(cydtw):
 if __name__ == '__main__':
 
     # Two dimensional
-    arr1 = np.array([[1, 0, 0], [5, 0, 0], [4, 0, 0], [2, 0, 0]])
-    arr2 = np.array([[1, 0, 0], [2, 0, 0], [4, 0, 0], [1, 0, 0], [2, 0, 0]])
-    settings = Settings(compute_path=True)
-    d = dtw(arr1, arr2, settings)
-    print(d.get_cost())
-    print(d.get_path())
-    d.plot_seq_mat_path()
-    plt.show()
+    # arr1 = np.array([[4, 0, 0], [4, 0, 0], [2, 0, 0], [4, 0, 0]])
+    # arr2 = np.array([[5, 0, 0], [4, 0, 0], [5, 0, 0], [6, 0, 0], [4, 0, 0]])
+    # sigma = np.array([1, 0, 0])
+    # settings = Settings(compute_path=True, dist='edr')
+    # d = ed(arr1, arr2, sigma, settings)
+    # print(d.get_cost())
+    # print(d.get_path())
 
-    # One dimensional
-    arr1 = np.array([1, 5, 4, 2])
-    arr2 = np.array([1, 2, 4, 1])
-    settings = Settings(compute_path=True)
-    d = dtw(arr1, arr2, settings)
+    r = np.array([[4, 0, 0], [4, 0, 0], [2, 0, 0], [4, 0, 0]])
+    q = np.array([[5, 0, 0], [4, 0, 0], [5, 0, 0], [6, 0, 0], [4, 0, 0]])
+    sigma = np.array([1, 0, 0])
+
+    d = ed(r, q, settings=Settings(
+                              dist='dtw_manhattan',
+                              step='p0sym',  # Sakoe-Chiba symmetric step with slope constraint p = 0
+                              window='palival',  # type of the window
+                              param=2.0,  # window parameter
+                              norm=False,  # normalization
+                              compute_path=True))
     print(d.get_cost())
     print(d.get_path())
-    d.plot_seq_mat_path()
-    plt.show()
+
+    # d.plot_seq_mat_path()
+    # plt.show()
+
+    # # One dimensional
+    # arr1 = np.array([4, 4, 2, 4])
+    # arr2 = np.array([5, 4, 5, 6, 4])
+    # sigma = np.array([1])
+    # settings = Settings(compute_path=True)
+    # d = ed(arr1, arr2, sigma, settings)
+    # print(d.get_cost())
+    # print(d.get_path())
+    # d.plot_seq_mat_path()
+    # plt.show()

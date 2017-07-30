@@ -1,15 +1,13 @@
-from libc.stdlib cimport malloc, free
-import collections
-import numpy as np
-import cython
 cimport numpy as np
+import numpy as np
+from libc.stdlib cimport malloc, free
 
 np.import_array()
 
 from stepstr import *
 
 # import c fuctions
-cdef extern from "cdtw.c":
+cdef extern from "ced.c":
     cdef int extra_size(int dp_type)
 
     cdef struct t_path_element:
@@ -21,7 +19,7 @@ cdef extern from "cdtw.c":
         double b
         double c
 
-    cdef struct t_dtw_settings:
+    cdef struct t_settings:
         int compute_path
         int dist_type
         int dp_type
@@ -31,21 +29,24 @@ cdef extern from "cdtw.c":
         int offset
         t_weights weights
 
-    cdef double cdtw(double *ref,
-                     double *query,
-                     int len_ref,
-                     int len_query,
-                     int ncols,
-                     double *cost_matrix,
-                     t_path_element *path,
-                     int *true_path_len,
-                     t_dtw_settings dtw_settings)
+    cdef double ced(double *ref,
+                    double *query,
+                    double *sigma,
+                    int len_ref,
+                    int len_query,
+                    int ncols,
+                    double *cost_matrix,
+                    t_path_element *path,
+                    int *true_path_len,
+                    t_settings settings)
 
 # macros
 cdef enum:
-    _EUCLID = 11
-    _EUCLID_SQUARED = 12
-    _MANHATTAN = 13
+    _DTW_EUCLID = 11
+    _DTW_EUCLID_SQUARED = 12
+    _DTW_MANHATTAN = 13
+    _EDR = 14
+
     _DPW = 20
     _DP1 = 21
     _DP2 = 22
@@ -121,15 +122,19 @@ class Dist(Setting):
     'euclid_squared'.
     """
 
-    def __init__(self, dist='euclid'):
+    def __init__(self, dist='dtw_euclid'):
         """__init__ method
         Args:
             dist(str, optional): distance type, default is 'manhattan'
         """
         self._cur_type = dist
-        self._types = {'euclid': _EUCLID,
-                       'euclid_squared': _EUCLID_SQUARED,
-                       'manhattan': _MANHATTAN}
+        self._types = {'dtw_euclid': _DTW_EUCLID,
+                       'dtw_euclid_squared': _DTW_EUCLID_SQUARED,
+                       'dtw_manhattan': _DTW_MANHATTAN,
+                       'edr': _EDR}
+
+    def is_sigma_required(self):
+        return self._cur_type == 'edr'
 
 
 class Step(Setting):
@@ -200,11 +205,11 @@ class Window(Setting):
 
 class Settings:
     """
-    class with dtw settings
+    class with ed settings
     """
 
     def __init__(self,
-                 dist='manhattan',
+                 dist='dtw_manhattan',
                  step='dp2',
                  window='nowindow',
                  param=0.0,
@@ -224,19 +229,19 @@ class Settings:
                            'normalization: ' + str(self.norm) + '\n')
 
 
-class cydtw:
+class cyed:
     """
-    Main entry, dtw algorithm
+    Main entry, ed algorithm
     settings is optional parameter
     default settings are dp2 without global constraint
     """
 
-    def __init__(self, ref, query, settings=Settings()):
+    def __init__(self, ref, query, sigma, settings=Settings()):
         self._dist = None
         self._cost = [[]]
         self._dir = [[()]]
         self._path = [()]
-        self._dtw(ref, query, settings)
+        self._ed(ref, query, sigma, settings)
 
     @staticmethod
     def flatten_padded(arr, offset):
@@ -253,7 +258,7 @@ class cydtw:
             return np.vstack((np.zeros(pad_size), arr)).ravel(order='C')
 
 
-    def _dtw(self, ref, query, settings):
+    def _ed(self, ref, query, sigma, settings):
         if not isinstance(ref, np.ndarray) or not isinstance(query, np.ndarray):
             raise Exception('Sequences must be numpy arrays')
 
@@ -275,18 +280,18 @@ class cydtw:
         if ndims == 2 and ref_shape[1] != qry_shape[1]:
             raise Exception('Shapes of two sequence can only differ in the first dimension')
 
-        # map python settings to C structure dtw_settings functions
-        cdef t_dtw_settings c_dtw_settings
-        c_dtw_settings.compute_path = <int> settings.compute_path
-        c_dtw_settings.dist_type = <int> settings.dist.get_cur_type_code()
-        c_dtw_settings.dp_type = <int> settings.step.get_cur_type_code()
-        c_dtw_settings.window_type = <int> settings.window.get_cur_type_code()
-        c_dtw_settings.window_param = <double> settings.window.get_param()
-        c_dtw_settings.norm = <int> settings.norm
-        c_dtw_settings.offset = extra_size(c_dtw_settings.dp_type)
-        c_dtw_settings.weights.a = <double> settings.step.get_weights()[0]
-        c_dtw_settings.weights.b = <double> settings.step.get_weights()[1]
-        c_dtw_settings.weights.c = <double> settings.step.get_weights()[2]
+        # map python settings to C structure settings functions
+        cdef t_settings c_settings
+        c_settings.compute_path = <int> settings.compute_path
+        c_settings.dist_type = <int> settings.dist.get_cur_type_code()
+        c_settings.dp_type = <int> settings.step.get_cur_type_code()
+        c_settings.window_type = <int> settings.window.get_cur_type_code()
+        c_settings.window_param = <double> settings.window.get_param()
+        c_settings.norm = <int> settings.norm
+        c_settings.offset = extra_size(c_settings.dp_type)
+        c_settings.weights.a = <double> settings.step.get_weights()[0]
+        c_settings.weights.b = <double> settings.step.get_weights()[1]
+        c_settings.weights.c = <double> settings.step.get_weights()[2]
 
         # allocate path
         cdef t_path_element *cpath = <t_path_element *> malloc(sizeof(
@@ -296,7 +301,7 @@ class cydtw:
         cdef int cpath_len = 0
         len_ref = ref_shape[0]
         len_qry = qry_shape[0]
-        offset = c_dtw_settings.offset
+        offset = c_settings.offset
 
         if ndims == 1:
             ncols = 1
@@ -306,25 +311,28 @@ class cydtw:
         # init numpy arrays
         cdef np.ndarray[np.float_t, ndim = 1] cref
         cdef np.ndarray[np.float_t, ndim = 1] cquery
+        cdef np.ndarray[np.float_t, ndim = 1] csigma
         cdef np.ndarray[np.float_t, ndim = 2] cost
 
         # expand ref and query and ravel as one dimensional, contiguous c arrays in memory
         cref = self.flatten_padded(ref, offset)
         cquery = self.flatten_padded(query, offset)
+        csigma = self.flatten_padded(sigma, 0)
 
         # init cost matrix
         cost = np.zeros((len_ref + offset, len_qry + offset),
                         dtype=np.float)
-        # call cdtw function (in cdtw.c)
-        self._dist = cdtw(<double*> cref.data,
-                          <double *> cquery.data,
-                          <int> len_ref,
+        # call ced function (in ced.c)
+        self._dist = ced(<double*> cref.data,
+                         <double *> cquery.data,
+                         <double *> csigma.data,
+                         <int> len_ref,
                           <int> len_qry,
                           <int> ncols,
                           <double*> &cost[0, 0],
                           cpath,
                           &cpath_len,
-                          c_dtw_settings)
+                          c_settings)
 
         self._cost = cost[offset:, offset:]
 
