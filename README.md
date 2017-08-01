@@ -35,7 +35,7 @@ Global constraints(windows):
 
 ```python
 import numpy as np
-from ced import pyed
+from ced import Settings, Edr, Dtw
 
 # Three dimensional arrays, with the second and third dimensions are dummy
 # E.g. the result will be identical to the distance between `r=[4,4,2,4]` and `q=[5,4,5,6,4`
@@ -43,7 +43,7 @@ r = np.array([[4, 0, 0], [4, 0, 0], [2, 0, 0], [4, 0, 0]])
 q = np.array([[5, 0, 0], [4, 0, 0], [5, 0, 0], [6, 0, 0], [4, 0, 0]])
 sigma = np.array([1, 0, 0])
 
-d = ed(r, q, settings=Settings(step='p0sym',  # Sakoe-Chiba symmetric step with slope constraint p = 0
+d = Dtw(r, q, settings=Settings(step='p0sym',  # Sakoe-Chiba symmetric step with slope constraint p = 0
                       window='palival',  # type of the window
                       param=2.0,  # window parameter
                       norm=False,  # normalization
@@ -64,7 +64,7 @@ d.get_path()
 
 ```python
 import numpy as np
-from ced import pyed
+from ced import Settings, Edr, Dtw
 
 # Three dimensional arrays, with the second and third dimensions are dummy
 # E.g. the result will be identical to the distance between `r=[4,4,2,4]` and `q=[5,4,5,6,4`
@@ -72,14 +72,14 @@ r = np.array([[4, 0, 0], [4, 0, 0], [2, 0, 0], [4, 0, 0]])
 q = np.array([[5, 0, 0], [4, 0, 0], [5, 0, 0], [6, 0, 0], [4, 0, 0]])
 sigma = np.array([1, 0, 0])
 
-d = ed(r, q, sigma, settings=Settings(dist='edr', norm=False, compute_path=True))
+d = Edr(r, q, sigma, settings=Settings(dist='euclid', norm=False, compute_path=True))
 d.get_dist()
 #1.0
 d.get_cost()
 # array([[ 0.  0.  0.  1.  1.]
 #        [ 0.  0.  0.  1.  1.]
 #        [ 1.  1.  1.  1.  2.]
-#        [ 1.  1.  1.  2.  1.]])
+#        [ 1.  1.  1.  2.  2.]])
 d.get_path()
 #[(0, 0), (0, 1), (1, 2), (2, 3), (3, 4)]
 ```

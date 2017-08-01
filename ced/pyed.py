@@ -5,18 +5,13 @@ import numpy as np
 from cyed import cyed, Settings
 
 
-class ed(cyed):
+class EditDistance(cyed):
 
-    def __init__(self, ref, query, sigma=None, settings=Settings()):
-        if sigma is None:
-            if settings.dist.is_sigma_required():
-                raise Exception('This type of edit distance algorithm requires sigmas')
-            sigma = np.zeros((np.shape(ref)[1],), dtype=np.double)
-
-        cyed.__init__(self, ref, query, sigma, settings)
+    def __init__(self, ref, query, tolerance, settings=Settings()):
+        cyed.__init__(self, ref, query, tolerance, settings)
         self._ref = ref
         self._query = query
-        self._sigma = sigma
+        self._tolerance = tolerance
 
     def plot_mat_path(self, colormap=cm.Greys_r):
         ils = []
@@ -119,25 +114,45 @@ class ed(cyed):
         plt.axis('off')
         plt.show()
 
+
+class Dtw(EditDistance):
+    def __init__(self, ref, query, settings=Settings()):
+        _tolerance = 0
+        settings.qtse.set_type('no_quantisation')
+
+        EditDistance.__init__(self, ref, query, _tolerance, settings)
+
+
+class Edr(EditDistance):
+    def __init__(self, ref, query, tolerance, settings=Settings()):
+        settings.qtse.set_type('edr')
+        settings.step.set_type('dp2edr')
+        cyed.__init__(self, ref, query, tolerance, settings)
+
+
 if __name__ == '__main__':
 
     # Two dimensional
     # arr1 = np.array([[4, 0, 0], [4, 0, 0], [2, 0, 0], [4, 0, 0]])
     # arr2 = np.array([[5, 0, 0], [4, 0, 0], [5, 0, 0], [6, 0, 0], [4, 0, 0]])
-    # sigma = np.array([1, 0, 0])
+    # tolerance = np.array([1, 0, 0])
     # settings = Settings(compute_path=True, dist='edr')
-    # d = ed(arr1, arr2, sigma, settings)
+    # d = ed(arr1, arr2, tolerance, settings)
     # print(d.get_cost())
     # print(d.get_path())
 
-    r = np.array([[4, 0, 0], [4, 0, 0], [2, 0, 0], [4, 0, 0]])
-    q = np.array([[5, 0, 0], [4, 0, 0], [5, 0, 0], [6, 0, 0], [4, 0, 0]])
-    sigma = np.array([1, 0, 0])
+    # r = np.array([[4, 0, 0], [4, 0, 0], [2, 0, 0], [4, 0, 0]])
+    # q = np.array([[5, 0, 0], [4, 0, 0], [5, 0, 0], [6, 0, 0], [4, 0, 0]])
+    # tolerance = 1
 
-    d = ed(r, q, settings=Settings(
-                              dist='dtw_manhattan',
+    r = np.array([4, 4, 2, 4])
+    q = np.array([5, 4, 5, 6, 4])
+    tolerance = 1
+
+    d = Edr(r, q, tolerance, settings=Settings(
+                              dist='euclid',
                               step='p0sym',  # Sakoe-Chiba symmetric step with slope constraint p = 0
-                              window='palival',  # type of the window
+                              # window='palival',  # type of the window
                               param=2.0,  # window parameter
                               norm=False,  # normalization
                               compute_path=True))
@@ -150,9 +165,9 @@ if __name__ == '__main__':
     # # One dimensional
     # arr1 = np.array([4, 4, 2, 4])
     # arr2 = np.array([5, 4, 5, 6, 4])
-    # sigma = np.array([1])
+    # tolerance = np.array([1])
     # settings = Settings(compute_path=True)
-    # d = ed(arr1, arr2, sigma, settings)
+    # d = ed(arr1, arr2, tolerance, settings)
     # print(d.get_cost())
     # print(d.get_path())
     # d.plot_seq_mat_path()

@@ -16,15 +16,15 @@ typedef int bool;
 
 
 /*distance types*/
-#define _DTW_EUCLID 11          /*euclidean distance for DTW*/
-#define _DTW_EUCLID_SQUARED 12  /*squared euclidean distance for DTW*/
-#define _DTW_MANHATTAN 13       /*manhattan distance for DTW*/
-#define _EDR 14                 /*binary distance according to EDR*/
+#define _EUCLID 11          /*euclidean distance for DTW*/
+#define _EUCLID_SQUARED 12  /*squared euclidean distance for DTW*/
+#define _MANHATTAN 13       /*manhattan distance for DTW*/
 
 /*step pattern types, read struct settings for more info*/
 #define _DPW            20
 #define _DP1            21
 #define _DP2            22
+#define _DP2_EDR        220
 #define _DP3            23
 #define _SCP0SYM        24
 #define _SCP0ASYM       25
@@ -40,6 +40,10 @@ typedef int bool;
 #define _ITAKURA        33
 #define _PALIVAL_MOD    35
 
+/* Quantisation type */
+#define _EDR             40
+#define _NO_QUANTISATION 41
+
 
 #define min2(a,b) ((a) < (b) ? a : b)
 #define max2(a,b) ((a) > (b) ? a : b)
@@ -49,18 +53,22 @@ typedef int bool;
 /*step functions args*/
 #define _DP_ARGS    double* ref,\
                     double* query,\
-                    double* sigma,\
+                    double sigma,\
                     double* cost_matrix,\
                     int i,\
                     int j,\
                     int ncols,\
                     struct t_settings* t_s,\
                     int size2, \
-                    double (*dist)(double * a, int i, double * b, int j, int ncols, double * sigma)
+                    double (*dist)(double * a, int i, double * b, int j, int ncols), \
+                    double (*quantise) (double d, double s)
 
 
-/*pointer to distance function*/
-typedef double (*dist_fptr)(double * a, int i, double * b, int j, int ncols, double * s);
+/*pointer to the distance function*/
+typedef double (*dist_fptr)(double * a, int i, double * b, int j, int ncols);
+
+/*pointer to the quantisation function*/
+typedef double (*qtse_fptr)(double d, double s);
 
 /*pointer to step function*/
 typedef double  (*dp_fptr)(_DP_ARGS);
@@ -100,13 +108,14 @@ struct t_weights{
  *                      1 - to compute optimal path
  *                      default 0
  *  int dist_type:      distance function:
- *                          11 - euclidean          _DTW_EUCLID
- *                          12 - euclidean          _DTW_EUCLID_SQUARED
- *                          13 - manhattan          _DTW_MANHATTAN
+ *                          11 - euclidean          _EUCLID
+ *                          12 - euclidean          _EUCLID_SQUARED
+ *                          13 - manhattan          _MANHATTAN
  *                      default euclidean
  *  int dp_type:        step pattern:
  *                          21 - dp1                            _DP1
  *                          22 - dp2                            _DP2
+ *                          220 - EDR's special accumulation    _DP2_EDR
  *                          23 - dp3                            _DP3
  *                          24 - Sakoe-Chiba P0 symmetric       _SCP0SYM        
  *                          25 - Sakoe-Chiba P0 asymmetric      _SCP0ASYM
@@ -136,6 +145,7 @@ struct t_settings{
 
     int compute_path;
     int dist_type;
+    int qtse_type;
     int dp_type;
     int window_type;
     double window_param;
@@ -324,6 +334,19 @@ double dp1(_DP_ARGS);
 double dp2(_DP_ARGS);
 
 /*
+ * Function:  dp2_edr (step pattern used by EDR)
+ * --------------------
+ *  Step patern dp2:
+ *  min(
+ *      cost_matrix[i][j-1]   +   1 # Insert cost = 1
+        cost_matrix[i-1][j]   +   1 # Delete cost = 1
+        cost_matrix[i-1][j-1] +   d(r[i],q[j]) # substitution cost (0 if similar, 1 otherwise)
+       )
+ * see doc for the edr
+*/
+double dp2_edr(_DP_ARGS);
+
+/*
  * Function:  dp3
  * -------------------- 
  *  Step patern dp3:
@@ -355,6 +378,16 @@ struct t_item dp1dir(_DP_ARGS);
  * see doc for the dpw,dp2
 */
 struct t_item dp2dir(_DP_ARGS);
+
+/**
+ * Step function used in EDR:
+ *  min(
+ *      cost_matrix[i][j-1]   +   1 # Insert cost = 1
+        cost_matrix[i-1][j]   +   1 # Delete cost = 1
+        cost_matrix[i-1][j-1] +   d(r[i],q[j]) # substitution cost (0 if similar, 1 otherwise)
+       )
+ */
+struct t_item dp2_edr_dir(_DP_ARGS);
 
 /*
  * Function:  dp3dir
@@ -624,7 +657,7 @@ bool nowindow(   int i, int j, double k, double I, double J);
  *  int ncols: number of columns of the second dimension (1 means 1 dimensional array)
  *  returns: double, manhattan distance between two dimensional points 
  */
-double manhattan(double *a, int i, double *b, int j, int ncols, double *s);
+double manhattan(double *a, int i, double *b, int j, int ncols);
 
 /*
  * Function:  euclid
@@ -635,20 +668,23 @@ double manhattan(double *a, int i, double *b, int j, int ncols, double *s);
  *  int ncols: number of columns of the second dimension (1 means 1 dimensional array)
  *  returns: double, (a-b)^2 
  */
-double euclid(double *a, int i, double *b, int j, int ncols, double *s);
+double euclid(double *a, int i, double *b, int j, int ncols);
 
-/**
- * Caculate manhattan distance according to EDR (Edit distance on real sequences):
- *  - 0 if |a-b| < sigma
- *  - 1 otherwise
+/*
+ * Function:  euclid_square
+ * --------------------
+ *  Euclidean distance helper
  *  double a:  1 or 2 dimensional point
  *  double b:  1 or 2 dimensional point
- *  double s:  sigma (1 or 2 dimensional)
  *  int ncols: number of columns of the second dimension (1 means 1 dimensional array)
- *
- *  Note: a, b and s must have the same dimension
+ *  returns: double, (a-b)^2
  */
-double edr(double *a, int i, double *b, int j, int ncols, double *s);
+double euclid_square(double *a, int i, double *b, int j, int ncols);
+
+/**
+ * Quantise the value of real distance (d) given the tolerance value (sigma - s)
+ */
+double edr(double d, double s);
 /*----------------------------------------------------------------------------*/
 /* ------------------------------- interface -------------------------------- */
 /*----------------------------------------------------------------------------*/
@@ -656,7 +692,7 @@ double edr(double *a, int i, double *b, int j, int ncols, double *s);
  * Function:  choose_dist
  * --------------------
  *  Chooses right distance function(euclid or euclid_squared) 
- *  int dist_type: settings.dist_type [_DTW_MANHATTAN, _DTW_EUCLID, _DTW_EUCLID_SQUARED]
+ *  int dist_type: settings.dist_type [_MANHATTAN, _EUCLID, _EUCLID_SQUARED]
  *  returns: dist_fptr, pointer to a distance function
  */
 dist_fptr choose_dist(int dist_type);
@@ -787,11 +823,12 @@ void fill_matrix(double *matrix, int len_ref, int len_query, struct t_settings s
  */
 double cednopath(double* ref,
                   double* query,
-                  double* sigma,
+                  double sigma,
                   int len_ref,
                   int len_query,
                   int ncols,
                   dist_fptr dist,
+                  qtse_fptr quantise,
                   dp_fptr dp,
                   window_fptr window,
                   double p, //window param
@@ -819,11 +856,12 @@ double cednopath(double* ref,
  */
 double cedpath(double* ref,
                 double* query,
-                double* sigma,
+                double sigma,
                 int len_ref,
                 int len_query,
                 int ncols,
                 dist_fptr dist,
+                qtse_fptr quantise,
                 dpdir_fptr dp_dir,
                 window_fptr window,
                 double p, //window param
@@ -854,7 +892,7 @@ double cedpath(double* ref,
  */
 double ced(double* ref,
             double* query,
-            double* sigma,
+            double sigma,
             int len_ref,
             int len_query,
             int ncols,

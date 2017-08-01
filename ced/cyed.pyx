@@ -22,6 +22,7 @@ cdef extern from "ced.c":
     cdef struct t_settings:
         int compute_path
         int dist_type
+        int qtse_type
         int dp_type
         int window_type
         double window_param
@@ -31,7 +32,7 @@ cdef extern from "ced.c":
 
     cdef double ced(double *ref,
                     double *query,
-                    double *sigma,
+                    double sigma,
                     int len_ref,
                     int len_query,
                     int ncols,
@@ -42,14 +43,14 @@ cdef extern from "ced.c":
 
 # macros
 cdef enum:
-    _DTW_EUCLID = 11
-    _DTW_EUCLID_SQUARED = 12
-    _DTW_MANHATTAN = 13
-    _EDR = 14
+    _EUCLID = 11
+    _EUCLID_SQUARED = 12
+    _MANHATTAN = 13
 
     _DPW = 20
     _DP1 = 21
     _DP2 = 22
+    _DP2_EDR = 220
     _DP3 = 23
     _SCP0SYM = 24
     _SCP0ASYM = 25
@@ -64,6 +65,9 @@ cdef enum:
     _PALIVAL = 32
     _ITAKURA = 33
     _PALIVAL_MOD = 35
+
+    _EDR = 40
+    _NO_QUANTISATION = 41
 
 cdef path_wrapper(t_path_element *cpath, int cpath_len):
     """Path wrapper
@@ -122,19 +126,28 @@ class Dist(Setting):
     'euclid_squared'.
     """
 
-    def __init__(self, dist='dtw_euclid'):
+    def __init__(self, dist='euclid'):
         """__init__ method
         Args:
             dist(str, optional): distance type, default is 'manhattan'
         """
+        Setting.__init__(self)
         self._cur_type = dist
-        self._types = {'dtw_euclid': _DTW_EUCLID,
-                       'dtw_euclid_squared': _DTW_EUCLID_SQUARED,
-                       'dtw_manhattan': _DTW_MANHATTAN,
-                       'edr': _EDR}
+        self._types = {'euclid': _EUCLID,
+                       'euclid_squared': _EUCLID_SQUARED,
+                       'manhattan': _MANHATTAN}
 
-    def is_sigma_required(self):
-        return self._cur_type == 'edr'
+
+class Quantisation(Setting):
+    def __init__(self, qtse='no_quantisation'):
+        """__init__ method
+        Args:
+            qtse(str, optional): quantisation type, default is 'no_quantisation'
+        """
+        Setting.__init__(self)
+        self._cur_type = qtse
+        self._types = {'edr': _EDR,
+                       'no_quantisation': _NO_QUANTISATION}
 
 
 class Step(Setting):
@@ -161,7 +174,7 @@ class Step(Setting):
 
     def __init__(self, step='dp2', weights = [1, 1, 1]):
         self._cur_type = step
-        self._types = {'dpw': _DPW, 'dp1': _DP1, 'dp2': _DP2, 'dp3': _DP3,
+        self._types = {'dpw': _DPW, 'dp1': _DP1, 'dp2': _DP2, 'dp3': _DP3, 'dp2edr': _DP2_EDR,
                        'p0sym': _SCP0SYM, 'p0asym': _SCP0ASYM,
                        'p05sym': _SCP1DIV2SYM, 'p05asym': _SCP1DIV2ASYM,
                        'p1sym': _SCP1SYM, 'p1asym': _SCP1ASYM,
@@ -209,7 +222,8 @@ class Settings:
     """
 
     def __init__(self,
-                 dist='dtw_manhattan',
+                 dist='manhattan',
+                 qtse='no_quantisation',
                  step='dp2',
                  window='nowindow',
                  param=0.0,
@@ -217,6 +231,7 @@ class Settings:
                  compute_path=False):
         self.dist = Dist(dist)
         self.step = Step(step)
+        self.qtse = Quantisation(qtse)
         self.window = Window(window, param)
         self.compute_path = compute_path
         self.norm = norm
@@ -248,7 +263,7 @@ class cyed:
         arr_shape = np.shape(arr)
         ndims = len(arr_shape)
         if ndims > 2:
-            raise Exception('Currently only supports one or two dimensional sequences')
+            raise Exception('Multi-dimensional input must be a two-dimensional matrix')
 
         if ndims == 1:
             pad_size = (offset, )
@@ -284,6 +299,7 @@ class cyed:
         cdef t_settings c_settings
         c_settings.compute_path = <int> settings.compute_path
         c_settings.dist_type = <int> settings.dist.get_cur_type_code()
+        c_settings.qtse_type = <int> settings.qtse.get_cur_type_code()
         c_settings.dp_type = <int> settings.step.get_cur_type_code()
         c_settings.window_type = <int> settings.window.get_cur_type_code()
         c_settings.window_param = <double> settings.window.get_param()
@@ -317,7 +333,6 @@ class cyed:
         # expand ref and query and ravel as one dimensional, contiguous c arrays in memory
         cref = self.flatten_padded(ref, offset)
         cquery = self.flatten_padded(query, offset)
-        csigma = self.flatten_padded(sigma, 0)
 
         # init cost matrix
         cost = np.zeros((len_ref + offset, len_qry + offset),
@@ -325,7 +340,7 @@ class cyed:
         # call ced function (in ced.c)
         self._dist = ced(<double*> cref.data,
                          <double *> cquery.data,
-                         <double *> csigma.data,
+                         <double> sigma,
                          <int> len_ref,
                           <int> len_qry,
                           <int> ncols,
