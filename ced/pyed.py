@@ -7,11 +7,10 @@ from cyed import cyed, Settings
 
 class EditDistance(cyed):
 
-    def __init__(self, ref, query, tolerance, settings=Settings()):
-        cyed.__init__(self, ref, query, tolerance, settings)
+    def __init__(self, ref, query, args, settings=Settings()):
+        cyed.__init__(self, ref, query, args, settings)
         self._ref = ref
         self._query = query
-        self._tolerance = tolerance
 
     def plot_mat_path(self, colormap=cm.Greys_r):
         ils = []
@@ -117,17 +116,22 @@ class EditDistance(cyed):
 
 class Dtw(EditDistance):
     def __init__(self, ref, query, settings=Settings()):
-        _tolerance = 0
         settings.qtse.set_type('no_quantisation')
-
-        EditDistance.__init__(self, ref, query, _tolerance, settings)
+        EditDistance.__init__(self, ref, query, {}, settings)
 
 
 class Edr(EditDistance):
-    def __init__(self, ref, query, tolerance, settings=Settings()):
+    def __init__(self, ref, query, args, settings=Settings()):
         settings.qtse.set_type('edr')
         settings.step.set_type('dp2edr')
-        cyed.__init__(self, ref, query, tolerance, settings)
+        cyed.__init__(self, ref, query, args, settings)
+
+
+class Erp(EditDistance):
+    def __init__(self, ref, query, args, settings=Settings()):
+        settings.qtse.set_type('no_quantisation')
+        settings.step.set_type('dp2erp')
+        cyed.__init__(self, ref, query, args, settings)
 
 
 if __name__ == '__main__':
@@ -147,12 +151,15 @@ if __name__ == '__main__':
 
     r = np.array([4, 4, 2, 4])
     q = np.array([5, 4, 5, 6, 4])
-    tolerance = 1
+    tolerance = np.array([1])
+    gap = np.array([0])
 
-    d = Edr(r, q, tolerance, settings=Settings(
+    args = {'sigmas': tolerance, 'gap': gap}
+
+    d = Erp(r, q, args, settings=Settings(
                               dist='euclid',
-                              step='p0sym',  # Sakoe-Chiba symmetric step with slope constraint p = 0
-                              # window='palival',  # type of the window
+                              # step='p0sym',  # Sakoe-Chiba symmetric step with slope constraint p = 0
+                              window='palival',  # type of the window
                               param=2.0,  # window parameter
                               norm=False,  # normalization
                               compute_path=True))

@@ -7,7 +7,6 @@
 #endif
 
 
-
 typedef int bool;
 
 #define true 1
@@ -25,6 +24,7 @@ typedef int bool;
 #define _DP1            21
 #define _DP2            22
 #define _DP2_EDR        220
+#define _DP2_ERP        221
 #define _DP3            23
 #define _SCP0SYM        24
 #define _SCP0ASYM       25
@@ -45,15 +45,20 @@ typedef int bool;
 #define _NO_QUANTISATION 41
 
 
-#define min2(a,b) ((a) < (b) ? a : b)
-#define max2(a,b) ((a) > (b) ? a : b)
-#define idx(i,j,J) ( (i)*(J) + (j) )
+#define min2(a, b) ((a) < (b) ? a : b)
+#define max2(a, b) ((a) > (b) ? a : b)
+#define idx(i, j, J) ( (i)*(J) + (j) )
 
+typedef struct t_extra_args {
+    double * sigmas; ///< To be used for quantisation in ERD
+    double sigma;    ///< Will be calculated based on the type of distance the user chosed
+    double * gap;    ///< To be used in ERP
+} t_extra_args;
 
 /*step functions args*/
 #define _DP_ARGS    double* ref,\
                     double* query,\
-                    double sigma,\
+                    t_extra_args args,\
                     double* cost_matrix,\
                     int i,\
                     int j,\
@@ -65,7 +70,7 @@ typedef int bool;
 
 
 /*pointer to the distance function*/
-typedef double (*dist_fptr)(double * a, int i, double * b, int j, int ncols);
+typedef double (*dist_fptr)(double *a, int i, double *b, int j, int ncols);
 
 /*pointer to the quantisation function*/
 typedef double (*qtse_fptr)(double d, double s);
@@ -80,19 +85,19 @@ typedef struct t_item (*dpdir_fptr)(_DP_ARGS);
 typedef bool (*window_fptr)(int i, int j, double r, double I, double J);
 
 /*warping path*/
-struct t_path_element{
+struct t_path_element {
     int i;
     int j;
 };
 
 /*t_item returns all step functions with traceback*/
-struct t_item{
+struct t_item {
     double val;
     int idx;
 };
 
 /*weights for step pattern*/
-struct t_weights{
+struct t_weights {
     double a;
     double b;
     double c;
@@ -141,7 +146,7 @@ struct t_weights{
  *
  */
 
-struct t_settings{
+struct t_settings {
 
     int compute_path;
     int dist_type;
@@ -166,42 +171,42 @@ struct t_settings{
  [3,-1, 0,-2, 0,-3,-1, 0, 0, 0, 0],
 */
 
-const int dp1_path_pattern[6][11] =       {{ 2, 0,-1,-1, 0, 0, 0, 0, 0, 0, 0},
-                                           {1, 0,-1, 0, 0, 0, 0, 0, 0, 0, 0},
-                                           {1,-1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                           {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                           {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                           {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+const int dp1_path_pattern[6][11] = {{2, 0,  -1, -1, 0, 0, 0, 0, 0, 0, 0},
+                                     {1, 0,  -1, 0,  0, 0, 0, 0, 0, 0, 0},
+                                     {1, -1, 0,  0,  0, 0, 0, 0, 0, 0, 0},
+                                     {0, 0,  0,  0,  0, 0, 0, 0, 0, 0, 0},
+                                     {0, 0,  0,  0,  0, 0, 0, 0, 0, 0, 0},
+                                     {0, 0,  0,  0,  0, 0, 0, 0, 0, 0, 0}};
 
 
-const int dp2_path_pattern[6][11] =       {{ 3, 0,-1,-1, 0,-1,-1, 0, 0, 0, 0},
-                                           {1, 0,-1, 0, 0, 0, 0, 0, 0, 0, 0},
-                                           {1,-1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                           {1,-1,-1, 0, 0, 0, 0, 0, 0, 0, 0},
-                                           {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                           {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+const int dp2_path_pattern[6][11] = {{3, 0,  -1, -1, 0, -1, -1, 0, 0, 0, 0},
+                                     {1, 0,  -1, 0,  0, 0,  0,  0, 0, 0, 0},
+                                     {1, -1, 0,  0,  0, 0,  0,  0, 0, 0, 0},
+                                     {1, -1, -1, 0,  0, 0,  0,  0, 0, 0, 0},
+                                     {0, 0,  0,  0,  0, 0,  0,  0, 0, 0, 0},
+                                     {0, 0,  0,  0,  0, 0,  0,  0, 0, 0, 0}};
 
-const int p1div2_path_pattern[6][11] =     {{5,-1,-3,-1,-2,-1,-1,-2,-1,-3,-1},
-                                            {3, 0,-1, 0,-2,-1,-3, 0, 0, 0, 0},
-                                            {2, 0,-1,-1,-2, 0, 0, 0, 0, 0, 0},
-                                            {1,-1,-1, 0, 0, 0, 0, 0, 0, 0, 0},
-                                            {2,-1, 0,-2,-1, 0, 0, 0, 0, 0, 0},
-                                            {3,-1, 0,-2, 0,-3,-1, 0, 0, 0, 0}};
+const int p1div2_path_pattern[6][11] = {{5, -1, -3, -1, -2, -1, -1, -2, -1, -3, -1},
+                                        {3, 0,  -1, 0,  -2, -1, -3, 0,  0,  0,  0},
+                                        {2, 0,  -1, -1, -2, 0,  0,  0,  0,  0,  0},
+                                        {1, -1, -1, 0,  0,  0,  0,  0,  0,  0,  0},
+                                        {2, -1, 0,  -2, -1, 0,  0,  0,  0,  0,  0},
+                                        {3, -1, 0,  -2, 0,  -3, -1, 0,  0,  0,  0}};
 
-const int p1_path_pattern[6][11] =     {{3,-1,-2,-1,-1,-2,-1, 0, 0, 0, 0},
-                                        {2, 0,-1,-1,-2, 0, 0, 0, 0, 0 ,0},
-                                        {1,-1,-1, 0, 0, 0, 0, 0, 0, 0, 0},
-                                        {2,-1, 0,-2,-1, 0, 0, 0, 0, 0, 0},
-                                        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+const int p1_path_pattern[6][11] = {{3, -1, -2, -1, -1, -2, -1, 0, 0, 0, 0},
+                                    {2, 0,  -1, -1, -2, 0,  0,  0, 0, 0, 0},
+                                    {1, -1, -1, 0,  0,  0,  0,  0, 0, 0, 0},
+                                    {2, -1, 0,  -2, -1, 0,  0,  0, 0, 0, 0},
+                                    {0, 0,  0,  0,  0,  0,  0,  0, 0, 0, 0},
+                                    {0, 0,  0,  0,  0,  0,  0,  0, 0, 0, 0}};
 
 
-const int p2_path_pattern[6][11] =     {{3,-2,-3,-1,-1,-3,-2, 0, 0, 0, 0},
-                                        {3, 0,-1,-1,-2,-2,-3, 0, 0, 0 ,0},
-                                        {1,-1,-1, 0, 0, 0, 0, 0, 0, 0, 0},
-                                        {3,-1, 0,-2,-1,-3,-2, 0, 0, 0, 0},
-                                        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+const int p2_path_pattern[6][11] = {{3, -2, -3, -1, -1, -3, -2, 0, 0, 0, 0},
+                                    {3, 0,  -1, -1, -2, -2, -3, 0, 0, 0, 0},
+                                    {1, -1, -1, 0,  0,  0,  0,  0, 0, 0, 0},
+                                    {3, -1, 0,  -2, -1, -3, -2, 0, 0, 0, 0},
+                                    {0, 0,  0,  0,  0,  0,  0,  0, 0, 0, 0},
+                                    {0, 0,  0,  0,  0,  0,  0,  0, 0, 0, 0}};
 
 
 /*
@@ -236,7 +241,7 @@ double min3(double x, double y, double z);
 
  *  returns:  min(arr)
  */
-double min_n(double* arr, int n);
+double min_n(double *arr, int n);
 
 /*
  * Function:  min2idx
@@ -249,6 +254,7 @@ double min_n(double* arr, int n);
  *  returns:  struct t_item, t_item = { min(a,b), position }
  */
 struct t_item min2idx(double a, double b);
+
 /*
  * Function:  min3idx
  * -------------------- 
@@ -272,7 +278,7 @@ struct t_item min3idx(double x, double y, double z);
 
  *  returns:  struct t_item, t_item = { min(arr), position }
  */
-struct t_item min_nidx(double* arr, int n);
+struct t_item min_nidx(double *arr, int n);
 
 /*
  * Function:  dpw
@@ -403,7 +409,7 @@ struct t_item dp3dir(_DP_ARGS);
  * This function is alias for the dp1
  * see doc for the dpw
 */
-double p0_sym(      _DP_ARGS);
+double p0_sym(_DP_ARGS);
 
 /*
  * Function:  p0asym
@@ -416,7 +422,7 @@ double p0_sym(      _DP_ARGS);
  *      )
  * see doc for the dpw
 */
-double p0_asym(     _DP_ARGS);
+double p0_asym(_DP_ARGS);
 
 /*
  * Function:  p1div2_sym
@@ -431,7 +437,7 @@ double p0_asym(     _DP_ARGS);
  *      )
  * see doc for the dpw
 */
-double p1div2_sym(  _DP_ARGS);
+double p1div2_sym(_DP_ARGS);
 
 /*
  * Function:  p1div2_asym
@@ -446,7 +452,7 @@ double p1div2_sym(  _DP_ARGS);
  *      )
  * see doc for the dpw
 */
-double p1div2_asym( _DP_ARGS);
+double p1div2_asym(_DP_ARGS);
 
 /*
  * Function:  p1_sym
@@ -459,7 +465,7 @@ double p1div2_asym( _DP_ARGS);
  *      )
  * see doc for the dpw
 */
-double p1_sym(      _DP_ARGS);
+double p1_sym(_DP_ARGS);
 
 /*
  * Function:  p1_asym
@@ -472,7 +478,7 @@ double p1_sym(      _DP_ARGS);
  *      )
  * see doc for the dpw
 */
-double p1_asym(     _DP_ARGS);
+double p1_asym(_DP_ARGS);
 
 /*
  * Function:  p2_sym
@@ -491,7 +497,7 @@ double p1_asym(     _DP_ARGS);
  *     )
  * see doc for the dpw
 */
-double p2_sym(      _DP_ARGS);
+double p2_sym(_DP_ARGS);
 
 /*
  * Function:  p2_asym
@@ -510,7 +516,7 @@ double p2_sym(      _DP_ARGS);
  *     )
  * see doc for the dpw
 */
-double p2_asym(     _DP_ARGS);
+double p2_asym(_DP_ARGS);
 /*---------------step patterns for traceback-------------------*/
 /*
  * Function:  p0_symdir
@@ -518,7 +524,7 @@ double p2_asym(     _DP_ARGS);
  * Sakoe-Chiba classification p = 0, symmetric step pattern:
  * see doc for the p0_sym, dp1
 */
-struct t_item p0_symdir(        _DP_ARGS);
+struct t_item p0_symdir(_DP_ARGS);
 
 /*
  * Function:  p0_asymdir
@@ -526,7 +532,7 @@ struct t_item p0_symdir(        _DP_ARGS);
  * Sakoe-Chiba classification p = 0, asymmetric step pattern:
  * see doc for the p0_asym, dp1
 */
-struct t_item p0_asymdir(       _DP_ARGS);
+struct t_item p0_asymdir(_DP_ARGS);
 
 /*
  * Function:  p1div2_symdir
@@ -534,7 +540,7 @@ struct t_item p0_asymdir(       _DP_ARGS);
  * Sakoe-Chiba classification p = 0.5, symmetric step pattern:
  * see doc for the p1div2_sym, dp1
 */
-struct t_item p1div2_symdir(    _DP_ARGS);
+struct t_item p1div2_symdir(_DP_ARGS);
 
 /*
  * Function:  p1div2_asymdir
@@ -542,7 +548,7 @@ struct t_item p1div2_symdir(    _DP_ARGS);
  * Sakoe-Chiba classification p = 0.5, asymmetric step pattern:
  * see doc for the p1div2_asym, dp1
 */
-struct t_item p1div2_asymdir(   _DP_ARGS);
+struct t_item p1div2_asymdir(_DP_ARGS);
 
 /*
  * Function:  p1_symdir
@@ -550,7 +556,7 @@ struct t_item p1div2_asymdir(   _DP_ARGS);
  * Sakoe-Chiba classification p = 1, symmetric step pattern:
  * see doc for the p1_sym, dp1
 */
-struct t_item p1_symdir(        _DP_ARGS);
+struct t_item p1_symdir(_DP_ARGS);
 
 /*
  * Function:  p1_asymdir
@@ -558,7 +564,7 @@ struct t_item p1_symdir(        _DP_ARGS);
  * Sakoe-Chiba classification p = 1, asymmetric step pattern:
  * see doc for the p1_asym, dp1
 */
-struct t_item p1_asymdir(     _DP_ARGS);
+struct t_item p1_asymdir(_DP_ARGS);
 
 /*
  * Function:  p2_symdir
@@ -566,7 +572,7 @@ struct t_item p1_asymdir(     _DP_ARGS);
  * Sakoe-Chiba classification p = 2, symmetric step pattern:
  * see doc for the p2_sym, dp1
 */
-struct t_item p2_symdir(        _DP_ARGS);
+struct t_item p2_symdir(_DP_ARGS);
 
 /*
  * Function:  p2_asymdir
@@ -574,7 +580,7 @@ struct t_item p2_symdir(        _DP_ARGS);
  * Sakoe-Chiba classification p = 2, asymmetric step pattern:
  * see doc for the p2_asym, dp1
 */
-struct t_item p2_asymdir(       _DP_ARGS);
+struct t_item p2_asymdir(_DP_ARGS);
 
 /*------------------------ window functions ------------------*/
 
@@ -591,7 +597,7 @@ struct t_item p2_asymdir(       _DP_ARGS);
  *  double J: length of query sequence, len_query, fake arg for this func
  *  returns:  bool value, if cost[i][j] is legal or not
  */
-bool scband(     int i, int j, double r, double I, double J);
+bool scband(int i, int j, double r, double I, double J);
 
 /*
  * Function: palival
@@ -607,7 +613,7 @@ bool scband(     int i, int j, double r, double I, double J);
  *  double J: length of query sequence, len_queryc
  *  returns: bool value, if cost[i][j] is legal or not
  */
-bool palival(    int i, int j, double r, double I, double J);
+bool palival(int i, int j, double r, double I, double J);
 
 /*
  * Function: palival_mod
@@ -624,7 +630,7 @@ bool palival(    int i, int j, double r, double I, double J);
  *  double J: length of query sequence, len_queryc
  *  returns: bool value, if cost[i][j] is legal or not
  */
-bool itakura(    int i, int j, double k, double I, double J);
+bool itakura(int i, int j, double k, double I, double J);
 
 /*
  * Function:  itakura 
@@ -645,7 +651,7 @@ bool palival_mod(int i, int j, double p, double I, double J);
  * This function is for testing only
  * returns: always true(1)
  */
-bool nowindow(   int i, int j, double k, double I, double J);
+bool nowindow(int i, int j, double k, double I, double J);
 /*------------------------distance function------------------- */
 
 /*
@@ -705,6 +711,7 @@ dist_fptr choose_dist(int dist_type);
  *  returns: dist_fptr, pointer to a step function without traceback
  */
 dp_fptr choose_dp(int dp_type);
+
 /*
  * Function:  choose_dpdir
  * --------------------
@@ -722,7 +729,7 @@ dpdir_fptr choose_dpdir(int dp_type);
  *  int dp_type: settings.win , step function type
  *  returns: dpdir_fptr, pointer to a step function with traceback
  */
-window_fptr choose_window(struct t_settings* settings);
+window_fptr choose_window(struct t_settings *settings);
 
 /*
  * Function:  choose_window_param
@@ -767,9 +774,9 @@ const int (*choose_path_pattern(struct t_settings settings))[11];
 int create_path_from_pattern(const int pattern[6][11],
                              int len_ref,
                              int len_query,
-                             int* path_points,
-                             int  path_points_count,
-                             struct t_path_element* path
+                             int *path_points,
+                             int path_points_count,
+                             struct t_path_element *path
 );
 
 /*
@@ -783,8 +790,8 @@ int create_path_from_pattern(const int pattern[6][11],
  * const int pattern[6][11]:path pattern
  * returns: path_points length
  */
-int direct_matrix_to_path_points(int* dir_matrix, int *path_points,
-                                 int len_ref, int len_query,const int pattern[6][11]);
+int direct_matrix_to_path_points(int *dir_matrix, int *path_points,
+                                 int len_ref, int len_query, const int pattern[6][11]);
 
 /*
  * Function:  fill_matrix
@@ -821,19 +828,19 @@ void fill_matrix(double *matrix, int len_ref, int len_query, struct t_settings s
  * struct t_settings settings: structure with edit distance settings
  * returns: doube, distance between reference and query sequences 
  */
-double cednopath(double* ref,
-                  double* query,
-                  double sigma,
-                  int len_ref,
-                  int len_query,
-                  int ncols,
-                  dist_fptr dist,
-                  qtse_fptr quantise,
-                  dp_fptr dp,
-                  window_fptr window,
-                  double p, //window param
-                  double *cost_matrix,
-                  struct t_settings settings);
+double cednopath(double *ref,
+                 double *query,
+                 t_extra_args args,
+                 int len_ref,
+                 int len_query,
+                 int ncols,
+                 dist_fptr dist,
+                 qtse_fptr quantise,
+                 dp_fptr dp,
+                 window_fptr window,
+                 double p, //window param
+                 double *cost_matrix,
+                 struct t_settings settings);
 
 /*
  * Function:  cedpath
@@ -854,20 +861,20 @@ double cednopath(double* ref,
  * struct t_settings settings: structure with edit distance settings
  * returns: doube, distance between reference and query sequences 
  */
-double cedpath(double* ref,
-                double* query,
-                double sigma,
-                int len_ref,
-                int len_query,
-                int ncols,
-                dist_fptr dist,
-                qtse_fptr quantise,
-                dpdir_fptr dp_dir,
-                window_fptr window,
-                double p, //window param
-                double *cost_matrix,
-                int *dir_matrix,
-                struct t_settings settings);
+double cedpath(double *ref,
+               double *query,
+               t_extra_args args,
+               int len_ref,
+               int len_query,
+               int ncols,
+               dist_fptr dist,
+               qtse_fptr quantise,
+               dpdir_fptr dp_dir,
+               window_fptr window,
+               double p, //window param
+               double *cost_matrix,
+               int *dir_matrix,
+               struct t_settings settings);
 
 
 /*
@@ -890,25 +897,27 @@ double cedpath(double* ref,
  * struct t_settings settings: structure with edit distance settings
  * returns: doube, distance between reference and query sequences 
  */
-double ced(double* ref,
-            double* query,
-            double sigma,
-            int len_ref,
-            int len_query,
-            int ncols,
-            double* cost_matrix,
-            struct t_path_element* path, /*path maximum length = len_ref + len_query*/
-            int *true_path_len,   /*actual computed path length*/
-            struct t_settings settings);
-
-
+double ced(double *ref,
+           double *query,
+           t_extra_args args,
+           int len_ref,
+           int len_query,
+           int ncols,
+           double *cost_matrix,
+           struct t_path_element *path, /*path maximum length = len_ref + len_query*/
+           int *true_path_len,   /*actual computed path length*/
+           struct t_settings settings);
 
 
 /*helpers*/
-void print_matrix(double* matrix, int size1, int size2);
-void print_intarr(int* arr, int n);
-void print_floatarr(float* arr, int n);
-void print_doublearr(double* arr, int n);
+void print_matrix(double *matrix, int size1, int size2);
 
+void print_intarr(int *arr, int n);
+
+void print_floatarr(float *arr, int n);
+
+void print_doublearr(double *arr, int n);
+
+double norm(double * arr, int n, double (*dist)(double * a, int i, double * b, int j, int ncols));
 
 #endif

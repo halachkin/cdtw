@@ -34,7 +34,7 @@ setup(
     cmdclass={'build_ext': build_ext},
     ext_modules=ext_modules,
     packages=find_packages(),
-    version='0.0.3',
+    version='0.0.4',
     author=['Aliaksei Halachkin', 'Yukio Fukuzawa'],
     author_email=['aliaksei.h(you know what)gmail.com', 'y (...) io * ac * nz'],
     description='Edit Distance',

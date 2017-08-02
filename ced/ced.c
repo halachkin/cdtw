@@ -148,7 +148,7 @@ struct t_item min_nidx(double *arr, int n) {
  *
  * double* ref: reference sequence
  * double* query: query sequence
- * doubel* sigma: maximum difference allowances of all dimension (usable by EDR)
+ * doubel* args.sigma: maximum difference allowances of all dimension (usable by EDR)
  * double* cost_matrix: cost matrix
  * int i: row index of the cost matrix
  * int j: column index of the cost matrix
@@ -160,7 +160,7 @@ struct t_item min_nidx(double *arr, int n) {
  * returns:  double, value to assign cost_matrix[i][j]
 */
 double dpw(_DP_ARGS) {
-    double d = quantise(dist(ref, i, query, j, ncols), sigma);
+    double d = quantise(dist(ref, i, query, j, ncols), args.sigma);
     return min3(cost_matrix[idx(i, j - 1, size2)] + t_s->weights.a * d,
                 cost_matrix[idx(i - 1, j, size2)] + t_s->weights.b * d,
                 cost_matrix[idx(i - 1, j - 1, size2)] + t_s->weights.c * d);
@@ -180,7 +180,7 @@ double dpw(_DP_ARGS) {
  * returns:  double, value to assign cost_matrix[i][j]
 */
 double dp1(_DP_ARGS) {
-    double d = quantise(dist(ref, i, query, j, ncols), sigma);
+    double d = quantise(dist(ref, i, query, j, ncols), args.sigma);
     return min3(cost_matrix[idx(i, j - 1, size2)] + d,
                 cost_matrix[idx(i - 1, j, size2)] + d,
                 cost_matrix[idx(i - 1, j - 1, size2)] + 2 * d);
@@ -198,7 +198,7 @@ double dp1(_DP_ARGS) {
  * see doc for the dpw
 */
 double dp2(_DP_ARGS) {
-    double d = quantise(dist(ref, i, query, j, ncols), sigma);
+    double d = quantise(dist(ref, i, query, j, ncols), args.sigma);
     return (min3(cost_matrix[idx(i, j - 1, size2)],
                  cost_matrix[idx(i - 1, j, size2)],
                  cost_matrix[idx(i - 1, j - 1, size2)]) + d);
@@ -214,14 +214,38 @@ double dp2(_DP_ARGS) {
         cost_matrix[i-1][j]   +   1 # Delete cost = 1
         cost_matrix[i-1][j-1] +   d(r[i],q[j]) # substitution cost (0 if similar, 1 otherwise)
        )
- * see doc for the edr
+ * Source: [L Chen, MT Özsu, V Oria Robust and fast similarity search for moving object trajectories]
 */
 double dp2_edr(_DP_ARGS) {
-    double d = quantise(dist(ref, i, query, j, ncols), sigma);
+    double d = quantise(dist(ref, i, query, j, ncols), args.sigma);
     return min3(cost_matrix[idx(i, j - 1, size2)] + 1,   //left
-                   cost_matrix[idx(i - 1, j, size2)] + 1,   //up
-                   cost_matrix[idx(i - 1, j - 1, size2)] + d);  //diag
+                cost_matrix[idx(i - 1, j, size2)] + 1,   //up
+                cost_matrix[idx(i - 1, j - 1, size2)] + d);  //diag
 }
+
+
+/*
+ * Function:  dp2_erp (step pattern used by ERP)
+ * --------------------
+ *  Step patern dp2:
+ *  min(
+ *      cost_matrix[i][j-1]   +   d(r[i], g) # Deletion ( of a args.gap) cost = distance between the element & the args.gap
+        cost_matrix[i-1][j]   +   d(g, q[j]) # Insertion cost = distance between the inserted element and the args.gap
+        cost_matrix[i-1][j-1] +   d(r[i],q[j]) # substitution cost (0 if similar, 1 otherwise)
+       )
+ * Source: [L. Chen and R. Ng. On the marriage of edit distance and Lp norms. In Proc. VLDB, 2004.]
+*/
+double dp2_erp(_DP_ARGS) {
+    double del = dist(query, j, args.gap, 0, ncols);
+    double ins = dist(ref, i, args.gap, 0, ncols);
+
+    /* The quantisation for ERP should be no-op */
+    double d = quantise(dist(ref, i, query, j, ncols), args.sigma);
+    return min3(cost_matrix[idx(i, j - 1, size2)] + ins,   //left
+                cost_matrix[idx(i - 1, j, size2)] + del,   //up
+                cost_matrix[idx(i - 1, j - 1, size2)] + d);  //diag
+}
+
 
 /*
  * Function:  dp3
@@ -234,7 +258,7 @@ double dp2_edr(_DP_ARGS) {
  * see doc for the dpw
 */
 double dp3(_DP_ARGS) {
-    double d = quantise(dist(ref, i, query, j, ncols), sigma);
+    double d = quantise(dist(ref, i, query, j, ncols), args.sigma);
     return (min2(cost_matrix[idx(i, j - 1, size2)],
                  cost_matrix[idx(i - 1, j, size2)]) + d);
 }
@@ -245,7 +269,7 @@ double dp3(_DP_ARGS) {
  * see doc for the dpw
 */
 struct t_item dp1dir(_DP_ARGS) {
-    double d = quantise(dist(ref, i, query, j, ncols), sigma);
+    double d = quantise(dist(ref, i, query, j, ncols), args.sigma);
     return min3idx(cost_matrix[idx(i, j - 1, size2)] + d,
                    cost_matrix[idx(i - 1, j, size2)] + d,
                    cost_matrix[idx(i - 1, j - 1, size2)] + 2 * d);
@@ -257,7 +281,7 @@ struct t_item dp1dir(_DP_ARGS) {
  * see doc for the dpw,dp2
 */
 struct t_item dp2dir(_DP_ARGS) {
-    double d = quantise(dist(ref, i, query, j, ncols), sigma);
+    double d = quantise(dist(ref, i, query, j, ncols), args.sigma);
     return min3idx(cost_matrix[idx(i, j - 1, size2)] + d,   //left
                    cost_matrix[idx(i - 1, j, size2)] + d,   //up
                    cost_matrix[idx(i - 1, j - 1, size2)] + d);  //diag
@@ -269,7 +293,7 @@ struct t_item dp2dir(_DP_ARGS) {
  * see doc for the dpw,dp3
 */
 struct t_item dp3dir(_DP_ARGS) {
-    double d = quantise(dist(ref, i, query, j, ncols), sigma);
+    double d = quantise(dist(ref, i, query, j, ncols), args.sigma);
     return min2idx(cost_matrix[idx(i, j - 1, size2)] + d,
                    cost_matrix[idx(i - 1, j, size2)] + d);
 }
@@ -283,9 +307,31 @@ struct t_item dp3dir(_DP_ARGS) {
        )
  */
 struct t_item dp2_edr_dir(_DP_ARGS) {
-    double d = quantise(dist(ref, i, query, j, ncols), sigma);
+    double d = quantise(dist(ref, i, query, j, ncols), args.sigma);
     return min3idx(cost_matrix[idx(i, j - 1, size2)] + 1,   //left
                    cost_matrix[idx(i - 1, j, size2)] + 1,   //up
+                   cost_matrix[idx(i - 1, j - 1, size2)] + d);  //diag
+}
+
+/*
+ * Function:  step pattern used by ERP
+ * --------------------
+ *  Step patern dp2:
+ *  min(
+ *      cost_matrix[i][j-1]   +   d(r[i], g) # Insert (a args.gap) cost = distance between the element & the args.gap
+        cost_matrix[i-1][j]   +   d(g, q[j]) # Delete cost = distance between the deleted element and the args.gap
+        cost_matrix[i-1][j-1] +   d(r[i],q[j]) # substitution cost (0 if similar, 1 otherwise)
+       )
+ * Source: [L. Chen and R. Ng. On the marriage of edit distance and Lp norms. In Proc. VLDB, 2004.]
+*/
+struct t_item dp2_erp_dir(_DP_ARGS) {
+    double del = dist(query, j, args.gap, 0, ncols);
+    double ins = dist(ref, i, args.gap, 0, ncols);
+
+    /* The quantisation for ERP should be no-op */
+    double d = quantise(dist(ref, i, query, j, ncols), args.sigma);
+    return min3idx(cost_matrix[idx(i, j - 1, size2)] + ins,   //left
+                   cost_matrix[idx(i - 1, j, size2)] + del,   //up
                    cost_matrix[idx(i - 1, j - 1, size2)] + d);  //diag
 }
 
@@ -297,7 +343,7 @@ struct t_item dp2_edr_dir(_DP_ARGS) {
  * see doc for the dpw
 */
 double p0_sym(_DP_ARGS) {
-    return dp1(ref, query, sigma, cost_matrix, i, j, ncols, t_s, size2, dist, quantise);
+    return dp1(ref, query, args, cost_matrix, i, j, ncols, t_s, size2, dist, quantise);
 }
 
 /*
@@ -312,7 +358,7 @@ double p0_sym(_DP_ARGS) {
  * see doc for the dpw
 */
 double p0_asym(_DP_ARGS) {
-    double d = quantise(dist(ref, i, query, j, ncols), sigma);
+    double d = quantise(dist(ref, i, query, j, ncols), args.sigma);
     return min3(cost_matrix[idx(i, j - 1, size2)],         //0
                 cost_matrix[idx(i - 1, j, size2)] + d,   //1
                 cost_matrix[idx(i - 1, j - 1, size2)] + d);  //2
@@ -332,11 +378,11 @@ double p0_asym(_DP_ARGS) {
  * see doc for the dpw
 */
 double p1div2_sym(_DP_ARGS) {
-    double d00 = quantise(dist(ref, i, query, j, ncols), sigma);
-    double d01 = quantise(dist(ref, i, query, j-1, ncols), sigma);
-    double d02 = quantise(dist(ref, i, query, j-2, ncols), sigma);
-    double d10 = quantise(dist(ref, i-1, query, j, ncols), sigma);
-    double d20 = quantise(dist(ref, i-2, query, j, ncols), sigma);
+    double d00 = quantise(dist(ref, i, query, j, ncols), args.sigma);
+    double d01 = quantise(dist(ref, i, query, j - 1, ncols), args.sigma);
+    double d02 = quantise(dist(ref, i, query, j - 2, ncols), args.sigma);
+    double d10 = quantise(dist(ref, i - 1, query, j, ncols), args.sigma);
+    double d20 = quantise(dist(ref, i - 2, query, j, ncols), args.sigma);
     double arr[5] = {
             cost_matrix[idx(i - 1, j - 3, size2)] + 2 * d02 + d01 + d00,
             cost_matrix[idx(i - 1, j - 2, size2)] + 2 * d01 + d00,
@@ -362,11 +408,11 @@ double p1div2_sym(_DP_ARGS) {
  * see doc for the dpw
 */
 double p1div2_asym(_DP_ARGS) {
-    double d00 = quantise(dist(ref, i, query, j, ncols), sigma);
-    double d01 = quantise(dist(ref, i, query, j-1, ncols), sigma);
-    double d02 = quantise(dist(ref, i, query, j-2, ncols), sigma);
-    double d10 = quantise(dist(ref, i-1, query, j, ncols), sigma);
-    double d20 = quantise(dist(ref, i-2, query, j, ncols), sigma);
+    double d00 = quantise(dist(ref, i, query, j, ncols), args.sigma);
+    double d01 = quantise(dist(ref, i, query, j - 1, ncols), args.sigma);
+    double d02 = quantise(dist(ref, i, query, j - 2, ncols), args.sigma);
+    double d10 = quantise(dist(ref, i - 1, query, j, ncols), args.sigma);
+    double d20 = quantise(dist(ref, i - 2, query, j, ncols), args.sigma);
 
     double arr[5] = {
             cost_matrix[idx(i - 1, j - 3, size2)] + (d02 + d01 + d00) / 3.0,
@@ -391,9 +437,9 @@ double p1div2_asym(_DP_ARGS) {
  * see doc for the dpw
 */
 double p1_sym(_DP_ARGS) {
-    double d00 = quantise(dist(ref, i, query, j, ncols), sigma);
-    double d01 = quantise(dist(ref, i, query, j-1, ncols), sigma);
-    double d10 = quantise(dist(ref, i-1, query, j, ncols), sigma);
+    double d00 = quantise(dist(ref, i, query, j, ncols), args.sigma);
+    double d01 = quantise(dist(ref, i, query, j - 1, ncols), args.sigma);
+    double d10 = quantise(dist(ref, i - 1, query, j, ncols), args.sigma);
 
     return min3(cost_matrix[idx(i - 1, j - 2, size2)] + 2 * d01 + d00,
                 cost_matrix[idx(i - 1, j - 1, size2)] + 2 * d00,
@@ -413,9 +459,9 @@ double p1_sym(_DP_ARGS) {
  * see doc for the dpw
 */
 double p1_asym(_DP_ARGS) {
-    double d00 = quantise(dist(ref, i, query, j, ncols), sigma);
-    double d01 = quantise(dist(ref, i, query, j-1, ncols), sigma);
-    double d10 = quantise(dist(ref, i-1, query, j, ncols), sigma);
+    double d00 = quantise(dist(ref, i, query, j, ncols), args.sigma);
+    double d01 = quantise(dist(ref, i, query, j - 1, ncols), args.sigma);
+    double d10 = quantise(dist(ref, i - 1, query, j, ncols), args.sigma);
 
     return min3(cost_matrix[idx(i - 1, j - 2, size2)] + (d01 + d00) / 2.0,
                 cost_matrix[idx(i - 1, j - 1, size2)] + d00,
@@ -442,11 +488,11 @@ double p1_asym(_DP_ARGS) {
  * see doc for the dpw
 */
 double p2_sym(_DP_ARGS) {
-    double d00 = quantise(dist(ref, i, query, j, ncols), sigma);
-    double d01 = quantise(dist(ref, i, query, j-1, ncols), sigma);
-    double d10 = quantise(dist(ref, i-1, query, j, ncols), sigma);
-    double d12 = quantise(dist(ref, i-1, query, j-2, ncols), sigma);
-    double d21 = quantise(dist(ref, i-2, query, j-1, ncols), sigma);
+    double d00 = quantise(dist(ref, i, query, j, ncols), args.sigma);
+    double d01 = quantise(dist(ref, i, query, j - 1, ncols), args.sigma);
+    double d10 = quantise(dist(ref, i - 1, query, j, ncols), args.sigma);
+    double d12 = quantise(dist(ref, i - 1, query, j - 2, ncols), args.sigma);
+    double d21 = quantise(dist(ref, i - 2, query, j - 1, ncols), args.sigma);
 
     return min3(cost_matrix[idx(i - 2, j - 3, size2)] + 2 * d12 + 2 * d01 + d00,
                 cost_matrix[idx(i - 1, j - 1, size2)] + 2 * d00,
@@ -473,11 +519,11 @@ double p2_sym(_DP_ARGS) {
  * see doc for the dpw
 */
 double p2_asym(_DP_ARGS) {
-    double d00 = quantise(dist(ref, i, query, j, ncols), sigma);
-    double d01 = quantise(dist(ref, i, query, j-1, ncols), sigma);
-    double d10 = quantise(dist(ref, i-1, query, j, ncols), sigma);
-    double d12 = quantise(dist(ref, i-1, query, j-2, ncols), sigma);
-    double d21 = quantise(dist(ref, i-2, query, j-1, ncols), sigma);
+    double d00 = quantise(dist(ref, i, query, j, ncols), args.sigma);
+    double d01 = quantise(dist(ref, i, query, j - 1, ncols), args.sigma);
+    double d10 = quantise(dist(ref, i - 1, query, j, ncols), args.sigma);
+    double d12 = quantise(dist(ref, i - 1, query, j - 2, ncols), args.sigma);
+    double d21 = quantise(dist(ref, i - 2, query, j - 1, ncols), args.sigma);
 
     return min3(cost_matrix[idx(i - 2, j - 3, size2)] + 2.0 * (d12 + d01 + d00) / 3.0,
                 cost_matrix[idx(i - 1, j - 1, size2)] + d00,
@@ -488,7 +534,7 @@ double p2_asym(_DP_ARGS) {
 
 
 struct t_item dpwdir(_DP_ARGS) {
-    double d = quantise(dist(ref, i, query, j, ncols), sigma);
+    double d = quantise(dist(ref, i, query, j, ncols), args.sigma);
     return min3idx(cost_matrix[idx(i, j - 1, size2)] + t_s->weights.a * d,
                    cost_matrix[idx(i - 1, j, size2)] + t_s->weights.b * d,
                    cost_matrix[idx(i - 1, j - 1, size2)] + t_s->weights.c * d);
@@ -501,7 +547,7 @@ struct t_item dpwdir(_DP_ARGS) {
  * see doc for the p0_sym, dp1
 */
 struct t_item p0_symdir(_DP_ARGS) {
-    return dp1dir(ref, query, sigma, cost_matrix, i, j, ncols, t_s, size2, dist, quantise);
+    return dp1dir(ref, query, args, cost_matrix, i, j, ncols, t_s, size2, dist, quantise);
 }
 
 /*
@@ -511,7 +557,7 @@ struct t_item p0_symdir(_DP_ARGS) {
  * see doc for the p0_asym, dp1
 */
 struct t_item p0_asymdir(_DP_ARGS) {
-    double d = quantise(dist(ref, i, query, j, ncols), sigma);
+    double d = quantise(dist(ref, i, query, j, ncols), args.sigma);
     return min3idx(cost_matrix[idx(i, j - 1, size2)],          //0
                    cost_matrix[idx(i - 1, j, size2)] + d,   //1
                    cost_matrix[idx(i - 1, j - 1, size2)] + d);  //2
@@ -526,11 +572,11 @@ struct t_item p0_asymdir(_DP_ARGS) {
 struct t_item p1div2_symdir(_DP_ARGS) {
     int m = i;
     int n = j;
-    double d00 = quantise(dist(ref, i, query, j, ncols), sigma);
-    double d01 = quantise(dist(ref, i, query, j-1, ncols), sigma);
-    double d02 = quantise(dist(ref, i, query, j-2, ncols), sigma);
-    double d10 = quantise(dist(ref, i-1, query, j, ncols), sigma);
-    double d20 = quantise(dist(ref, i-2, query, j, ncols), sigma);
+    double d00 = quantise(dist(ref, i, query, j, ncols), args.sigma);
+    double d01 = quantise(dist(ref, i, query, j - 1, ncols), args.sigma);
+    double d02 = quantise(dist(ref, i, query, j - 2, ncols), args.sigma);
+    double d10 = quantise(dist(ref, i - 1, query, j, ncols), args.sigma);
+    double d20 = quantise(dist(ref, i - 2, query, j, ncols), args.sigma);
     double arr[5] = {
             cost_matrix[idx(i - 1, j - 3, size2)] + 2.0 * d02 + d01 + d00,
             cost_matrix[idx(i - 1, j - 2, size2)] + 2.0 * d01 + d00,
@@ -549,11 +595,11 @@ struct t_item p1div2_symdir(_DP_ARGS) {
  * see doc for the p1div2_asym, dp1
 */
 struct t_item p1div2_asymdir(_DP_ARGS) {
-    double d00 = quantise(dist(ref, i, query, j, ncols), sigma);
-    double d01 = quantise(dist(ref, i, query, j-1, ncols), sigma);
-    double d02 = quantise(dist(ref, i, query, j-2, ncols), sigma);
-    double d10 = quantise(dist(ref, i-1, query, j, ncols), sigma);
-    double d20 = quantise(dist(ref, i-2, query, j, ncols), sigma);
+    double d00 = quantise(dist(ref, i, query, j, ncols), args.sigma);
+    double d01 = quantise(dist(ref, i, query, j - 1, ncols), args.sigma);
+    double d02 = quantise(dist(ref, i, query, j - 2, ncols), args.sigma);
+    double d10 = quantise(dist(ref, i - 1, query, j, ncols), args.sigma);
+    double d20 = quantise(dist(ref, i - 2, query, j, ncols), args.sigma);
     double arr[5] = {
             cost_matrix[idx(i - 1, j - 3, size2)] + (d02 + d01 + d00) / 3.0,
             cost_matrix[idx(i - 1, j - 2, size2)] + (d01 + d00) / 2,
@@ -572,9 +618,9 @@ struct t_item p1div2_asymdir(_DP_ARGS) {
  * see doc for the p1_sym, dp1
 */
 struct t_item p1_symdir(_DP_ARGS) {
-    double d00 = quantise(dist(ref, i, query, j, ncols), sigma);
-    double d01 = quantise(dist(ref, i, query, j-1, ncols), sigma);
-    double d10 = quantise(dist(ref, i-1, query, j, ncols), sigma);
+    double d00 = quantise(dist(ref, i, query, j, ncols), args.sigma);
+    double d01 = quantise(dist(ref, i, query, j - 1, ncols), args.sigma);
+    double d10 = quantise(dist(ref, i - 1, query, j, ncols), args.sigma);
 
     return min3idx(cost_matrix[idx(i - 1, j - 2, size2)] + 2 * d01 + d00,
                    cost_matrix[idx(i - 1, j - 1, size2)] + 2 * d00,
@@ -589,9 +635,9 @@ struct t_item p1_symdir(_DP_ARGS) {
  * see doc for the p1_asym, dp1
 */
 struct t_item p1_asymdir(_DP_ARGS) {
-    double d00 = quantise(dist(ref, i, query, j, ncols), sigma);
-    double d01 = quantise(dist(ref, i, query, j-1, ncols), sigma);
-    double d10 = quantise(dist(ref, i-1, query, j, ncols), sigma);
+    double d00 = quantise(dist(ref, i, query, j, ncols), args.sigma);
+    double d01 = quantise(dist(ref, i, query, j - 1, ncols), args.sigma);
+    double d10 = quantise(dist(ref, i - 1, query, j, ncols), args.sigma);
 
     return min3idx(cost_matrix[idx(i - 1, j - 2, size2)] + (d01 + d00) / 2.0,
                    cost_matrix[idx(i - 1, j - 1, size2)] + d00,
@@ -606,17 +652,16 @@ struct t_item p1_asymdir(_DP_ARGS) {
  * see doc for the p2_sym, dp1
 */
 struct t_item p2_symdir(_DP_ARGS) {
-    double d00 = quantise(dist(ref, i, query, j, ncols), sigma);
-    double d01 = quantise(dist(ref, i, query, j-1, ncols), sigma);
-    double d10 = quantise(dist(ref, i-1, query, j, ncols), sigma);
-    double d12 = quantise(dist(ref, i-1, query, j-2, ncols), sigma);
-    double d21 = quantise(dist(ref, i-2, query, j-1, ncols), sigma);
+    double d00 = quantise(dist(ref, i, query, j, ncols), args.sigma);
+    double d01 = quantise(dist(ref, i, query, j - 1, ncols), args.sigma);
+    double d10 = quantise(dist(ref, i - 1, query, j, ncols), args.sigma);
+    double d12 = quantise(dist(ref, i - 1, query, j - 2, ncols), args.sigma);
+    double d21 = quantise(dist(ref, i - 2, query, j - 1, ncols), args.sigma);
 
     return min3idx(cost_matrix[idx(i - 2, j - 3, size2)] + 2 * d12 + 2 * d01 + d00,
                    cost_matrix[idx(i - 1, j - 1, size2)] + 2 * d00,
                    cost_matrix[idx(i - 3, j - 2, size2)] + 2 * d21 + 2 * d10 + d00
     );
-
 }
 
 /*
@@ -626,11 +671,11 @@ struct t_item p2_symdir(_DP_ARGS) {
  * see doc for the p2_asym, dp1
 */
 struct t_item p2_asymdir(_DP_ARGS) {
-    double d00 = quantise(dist(ref, i, query, j, ncols), sigma);
-    double d01 = quantise(dist(ref, i, query, j-1, ncols), sigma);
-    double d10 = quantise(dist(ref, i-1, query, j, ncols), sigma);
-    double d12 = quantise(dist(ref, i-1, query, j-2, ncols), sigma);
-    double d21 = quantise(dist(ref, i-2, query, j-1, ncols), sigma);
+    double d00 = quantise(dist(ref, i, query, j, ncols), args.sigma);
+    double d01 = quantise(dist(ref, i, query, j - 1, ncols), args.sigma);
+    double d10 = quantise(dist(ref, i - 1, query, j, ncols), args.sigma);
+    double d12 = quantise(dist(ref, i - 1, query, j - 2, ncols), args.sigma);
+    double d21 = quantise(dist(ref, i - 2, query, j - 1, ncols), args.sigma);
     return min3idx(cost_matrix[idx(i - 2, j - 3, size2)] + 2.0 * (d12 + d01 + d00) / 3.0,
                    cost_matrix[idx(i - 1, j - 1, size2)] + d00,
                    cost_matrix[idx(i - 3, j - 2, size2)] + d21 + d10 + d00
@@ -724,6 +769,32 @@ bool nowindow(int i, int j, double k, double I, double J) {
 
 /* ------------------------ distance function ------------------------------- */
 
+void vector_subtract(double *v1, double *v2, double *result, int n) {
+    int i;
+    for (i = 0; i < n; i++) {
+        result[i] = v1[i] - v2[i];
+    }
+}
+
+double l1norm(double *a, int n) {
+    int i;
+    double result = 0;
+    for (i = 0; i < n; i++) {
+        result += fabs(a[i]);
+    }
+    return result;
+}
+
+double l2norm(double *a, int n) {
+    int i;
+    double result = 0;
+    for (i = 0; i < n; i++) {
+        result += a[i] * a[i];
+    }
+    return result;
+}
+
+
 /*
  * Function:  manhattan
  * --------------------
@@ -735,8 +806,8 @@ bool nowindow(int i, int j, double k, double I, double J) {
  */
 double manhattan(double *a, int i, double *b, int j, int ncols) {
     double distance = 0.0;
-    double * a_start = a + i*ncols;
-    double * b_start = b + j*ncols;
+    double *a_start = a + i * ncols;
+    double *b_start = b + j * ncols;
     int k;
     for (k = 0; k < ncols; k++) {
         distance += fabs(a_start[k] - b_start[k]);
@@ -755,7 +826,6 @@ double manhattan(double *a, int i, double *b, int j, int ncols) {
  */
 double euclid(double *a, int i, double *b, int j, int ncols) {
     double distance = euclid_square(a, i, b, j, ncols);
-//    printf("i=%d, j=%d, a[i]=%.1f, b[j]=%.1f, dist=%.1f\n", i, j, a[i], b[j], sqrt(distance));
     return sqrt(distance);
 }
 
@@ -771,17 +841,41 @@ double euclid(double *a, int i, double *b, int j, int ncols) {
  */
 double euclid_square(double *a, int i, double *b, int j, int ncols) {
     double distance = 0.0;
-    double * a_start = a + i*ncols;
-    double * b_start = b + j*ncols;
+    double *a_start = a + i * ncols;
+    double *b_start = b + j * ncols;
     int k;
     for (k = 0; k < ncols; k++) {
         distance += pow((a_start[k] - b_start[k]), 2);
     }
     return distance;
 }
+//
+///**
+// * Quantise the value of real distance (d) given the tolerance value (tol)
+// * The distance is an Lp-norm
+// */
+//double edr_norm(double* raw_dist, int ncols, double tol, double (*norm)(double *, int)){
+//    double d = norm(raw_dist, ncols);
+//    return (d <= tol) ? 0 : 1;
+//}
+//
+///**
+// * Quantise the value of the distance between two vectors given the tolerance values (tol)
+// * The distance is still a vector, not norm. So is the tolerance.
+// * The quantised value is 0 (similar) if the distance vector is less than the tolerance vector at all dimension
+// */
+//double edr_dim(double* raw_dist, int ncols, double * tol){
+//    int i;
+//    for (i=0; i<ncols; i++) {
+//        if (raw_dist[i] > tol[i]) {
+//            return 1;
+//        }
+//    }
+//    return 0;
+//}
 
 /**
- * Quantise the value of real distance (d) given the tolerance value (sigma - s)
+ * Quantise the value of real distance (d) given the tolerance value (s)
  */
 double edr(double d, double s) {
     return (d <= s) ? 0 : 1;
@@ -847,6 +941,8 @@ dp_fptr choose_dp(int dp_type) {
             return &dpw;
         case _DP2_EDR:
             return &dp2_edr;
+        case _DP2_ERP:
+            return &dp2_erp;
         case _SCP0SYM:
             return &p0_sym;
         case _SCP0ASYM:
@@ -887,6 +983,8 @@ dpdir_fptr choose_dpdir(int dp_type) {
             return &dpwdir;
         case _DP2_EDR:
             return &dp2_edr_dir;
+        case _DP2_ERP:
+            return &dp2_erp_dir;
         case _SCP0SYM:
             return &p0_symdir;
         case _SCP0ASYM:
@@ -996,6 +1094,7 @@ int extra_size(int dp_type) {
         case _DP2:
         case _DP3:
         case _DP2_EDR:
+        case _DP2_ERP:
         case _SCP0ASYM:
         case _SCP0SYM:
             return 1;
@@ -1092,7 +1191,7 @@ int direct_matrix_to_path_points(int *dir_matrix,
  * Edit Distance (e.g. DTW, EDR) algorithm(without traceback)
  * double* ref:         reference sequence
  * double* query:       query sequence
- * doubel* sigma:       maximum difference allowances of all dimension (usable by EDR)
+ * doubel* args.sigma:       maximum difference allowances of all dimension (usable by EDR)
  * int len_ref:         length of the reference sequence
  * int len_query:       length of the query sequence
  * int ncols:           number of columns of the second dimension (1 means 1 dimensional array)
@@ -1105,18 +1204,18 @@ int direct_matrix_to_path_points(int *dir_matrix,
  * returns: doube, distance between reference and query sequences
  */
 double cednopath(double *ref,
-                  double *query,
-                  double sigma,
-                  int len_ref,
-                  int len_query,
-                  int ncols,
-                  dist_fptr dist,
-                  qtse_fptr quantise,
-                  dp_fptr dp,
-                  window_fptr window,
-                  double p, //window param
-                  double *cost_matrix,
-                  struct t_settings settings) {
+                 double *query,
+                 t_extra_args args,
+                 int len_ref,
+                 int len_query,
+                 int ncols,
+                 dist_fptr dist,
+                 qtse_fptr quantise,
+                 dp_fptr dp,
+                 window_fptr window,
+                 double p, //window param
+                 double *cost_matrix,
+                 struct t_settings settings) {
     int off = settings.offset;
     /*memory was already allocated*/
     /*extending matrix*/
@@ -1142,28 +1241,32 @@ double cednopath(double *ref,
             s = 1;
         }
 
-        cost_matrix[idx(off, off, N)] = quantise(dist(ref, off, query, off, ncols), sigma);
+        cost_matrix[idx(off, off, N)] = quantise(dist(ref, off, query, off, ncols), args.sigma);
         for (j = max2(off + 1, _round(s * (off - w))); j < min2(N, _round(s * (off + w) + 1)); j++) {
-            cost_matrix[idx(off, j, N)] = dp(ref, query, sigma, cost_matrix, off, j, ncols, &settings, N, dist, quantise);
+            cost_matrix[idx(off, j, N)] = dp(ref, query, args, cost_matrix, off, j, ncols, &settings, N, dist,
+                                             quantise);
         }
 
         for (i = off + 1; i < M; i++) {
             for (j = max2(off, _round(s * (i - w))); j < min2(N, _round(s * (i + w) + 1)); j++)
-                cost_matrix[idx(i, j, N)] = dp(ref, query, sigma, cost_matrix, i, j, ncols, &settings, N, dist, quantise);
+                cost_matrix[idx(i, j, N)] = dp(ref, query, args, cost_matrix, i, j, ncols, &settings, N, dist,
+                                               quantise);
         }
 
     }
         /*slow window case*/
     else {
-        cost_matrix[idx(off, off, N)] = quantise(dist(ref, off, query, off, ncols), sigma);
+        cost_matrix[idx(off, off, N)] = quantise(dist(ref, off, query, off, ncols), args.sigma);
         for (j = off + 1; j < N; j++) {
             if (window(off, j, p, len_ref, len_query))
-                cost_matrix[idx(off, j, N)] = dp(ref, query, sigma, cost_matrix, off, j, ncols, &settings, N, dist, quantise);
+                cost_matrix[idx(off, j, N)] = dp(ref, query, args, cost_matrix, off, j, ncols, &settings, N, dist,
+                                                 quantise);
         }
         for (i = off + 1; i < M; i++) {
             for (j = off; j < N; j++) {
                 if (window(i, j, p, len_ref, len_query))
-                    cost_matrix[idx(i, j, N)] = dp(ref, query, sigma, cost_matrix, i, j, ncols, &settings, N, dist, quantise);
+                    cost_matrix[idx(i, j, N)] = dp(ref, query, args, cost_matrix, i, j, ncols, &settings, N, dist,
+                                                   quantise);
             }
         }
     }
@@ -1178,7 +1281,7 @@ double cednopath(double *ref,
  * Edit Distance (e.g. DTW, EDR) algorithm(with traceback)
  * double* ref:         reference sequence
  * double* query:       query sequence
- * doubel* sigma:       maximum difference allowances of all dimension (usable by EDR)
+ * doubel* args.sigma:       maximum difference allowances of all dimension (usable by EDR)
  * int len_ref:         length of the reference sequence
  * int len_query:       length of the query sequence
  * int ncols:           number of columns of the second dimension (1 means 1 dimensional array)
@@ -1192,19 +1295,19 @@ double cednopath(double *ref,
  * returns: doube, distance between reference and query sequences
  */
 double cedpath(double *ref,
-                double *query,
-                double sigma,
-                int len_ref,
-                int len_query,
-                int ncols,
-                dist_fptr dist,
-                qtse_fptr quantise,
-                dpdir_fptr dp_dir,
-                window_fptr window,
-                double p, //window param
-                double *cost_matrix,
-                int *dir_matrix,
-                struct t_settings settings) {
+               double *query,
+               t_extra_args args,
+               int len_ref,
+               int len_query,
+               int ncols,
+               dist_fptr dist,
+               qtse_fptr quantise,
+               dpdir_fptr dp_dir,
+               window_fptr window,
+               double p, //window param
+               double *cost_matrix,
+               int *dir_matrix,
+               struct t_settings settings) {
     int off = settings.offset;
 
     struct t_item item = {0, 0};
@@ -1232,16 +1335,16 @@ double cedpath(double *ref,
             s = 1;
         }
 
-        cost_matrix[idx(off, off, N)] = quantise(dist(ref, off, query, off, ncols), sigma);
+        cost_matrix[idx(off, off, N)] = quantise(dist(ref, off, query, off, ncols), args.sigma);
         for (j = max2(off + 1, _round(s * (off - w))); j < min2(N, _round(s * (off + w) + 1)); j++) {
-            item = dp_dir(ref, query, sigma, cost_matrix, off, j, ncols, &settings, N, dist, quantise);
+            item = dp_dir(ref, query, args, cost_matrix, off, j, ncols, &settings, N, dist, quantise);
             cost_matrix[idx(off, j, N)] = item.val;
             dir_matrix[idx(0, j - off, N - off)] = item.idx;
         }
 
         for (i = off + 1; i < M; i++) {
             for (j = max2(off, _round(s * (i - w))); j < min2(N, _round(s * (i + w) + 1)); j++) {
-                item = dp_dir(ref, query, sigma, cost_matrix, i, j, ncols, &settings, N, dist, quantise);
+                item = dp_dir(ref, query, args, cost_matrix, i, j, ncols, &settings, N, dist, quantise);
                 cost_matrix[idx(i, j, N)] = item.val;
                 dir_matrix[idx(i - off, j - off, N - off)] = item.idx;
             }
@@ -1249,10 +1352,10 @@ double cedpath(double *ref,
     }
         /*slow window case*/
     else {
-        cost_matrix[idx(off, off, N)] = quantise(dist(ref, off, query, off, ncols), sigma);
+        cost_matrix[idx(off, off, N)] = quantise(dist(ref, off, query, off, ncols), args.sigma);
         for (j = off + 1; j < N; j++) {
             if (window(off, j, p, len_ref, len_query)) {
-                item = dp_dir(ref, query, sigma, cost_matrix, off, j, ncols, &settings, N, dist, quantise);
+                item = dp_dir(ref, query, args, cost_matrix, off, j, ncols, &settings, N, dist, quantise);
                 cost_matrix[idx(off, j, N)] = item.val;
                 dir_matrix[idx(0, j - off, N - off)] = item.idx;
             }
@@ -1260,7 +1363,7 @@ double cedpath(double *ref,
         for (i = off + 1; i < M; i++) {
             for (j = off; j < N; j++) {
                 if (window(i, j, p, len_ref, len_query)) {
-                    item = dp_dir(ref, query, sigma, cost_matrix, i, j, ncols, &settings, N, dist, quantise);
+                    item = dp_dir(ref, query, args, cost_matrix, i, j, ncols, &settings, N, dist, quantise);
                     cost_matrix[idx(i, j, N)] = item.val;
                     dir_matrix[idx(i - off, j - off, N - off)] = item.idx;
                 }
@@ -1279,7 +1382,7 @@ double cedpath(double *ref,
 
  * double *matrix:      pointer to cost matrix
  * double* query:       query sequence
- * doubel* sigma:       maximum difference allowances of all dimension (usable by EDR)
+ * doubel* args.sigma:       maximum difference allowances of all dimension (usable by EDR)
  * int len_ref:         length of the reference sequence
  * int len_query:       length of the query sequence
  * struct t_settings settings: structure with edit distance settings
@@ -1299,9 +1402,9 @@ void fill_matrix(double *matrix,
     int j = 0;
     /*if there is a window or complicated step pattern*/
     if (settings.window_type != 0 || (settings.dp_type != _DP1 &&
-                                          settings.dp_type != _DP2 &&
-                                          settings.dp_type != _DP3 &&
-                                          settings.dp_type != _SCP0SYM)
+                                      settings.dp_type != _DP2 &&
+                                      settings.dp_type != _DP3 &&
+                                      settings.dp_type != _SCP0SYM)
             ) /* + _SCP0ASYM??*/
     {
         for (i = 0; i < M; i++)
@@ -1327,8 +1430,8 @@ void fill_matrix(double *matrix,
  * This fuction is main entry for the ced
  * double* ref:                 reference sequence
  * double* query:               query sequence
- * doubel* sigma:               maximum difference allowances of all dimension (usable by EDR)
- * doubel* sigma:               maximum difference allowances of all dimension (usable by EDR)
+ * doubel* args.sigma:               maximum difference allowances of all dimension (usable by EDR)
+ * doubel* args.sigma:               maximum difference allowances of all dimension (usable by EDR)
  * int len_ref:                 length of the reference sequence
  * int len_query:               length of the query sequence
  * int ncols:                   number of columns of the second dimension (1 means 1 dimensional array)
@@ -1342,15 +1445,15 @@ void fill_matrix(double *matrix,
  * returns: doube, distance between reference and query sequences
  */
 double ced(double *ref,
-            double *query,
-            double sigma,
-            int len_ref,
-            int len_query,
-            int ncols,
-            double *cost_matrix,
-            struct t_path_element *path,
-            int *true_path_len,
-            struct t_settings settings) {
+           double *query,
+           t_extra_args args,
+           int len_ref,
+           int len_query,
+           int ncols,
+           double *cost_matrix,
+           struct t_path_element *path,
+           int *true_path_len,
+           struct t_settings settings) {
     /*init distance*/
     double distance = 0;
     /*init window function param*/
@@ -1365,6 +1468,11 @@ double ced(double *ref,
     dist_fptr dist = choose_dist(settings.dist_type);
     /*pointer to the quantisation function*/
     qtse_fptr quantise = choose_quantisation(settings.qtse_type);
+
+    /* Normalise the tolerance if an array is given */
+    if (args.sigmas != NULL) {
+        args.sigma = norm(args.sigmas, ncols, dist);
+    }
 
     int *dir_matrix = NULL;
 
@@ -1393,18 +1501,18 @@ double ced(double *ref,
     if (settings.compute_path == false) {
 
         distance = cednopath(ref,
-                              query,
-                              sigma,
-                              len_ref,
-                              len_query,
-                              ncols,
-                              dist,
-                              quantise,
-                              dp,
-                              window,
-                              p,
-                              cost_matrix,
-                              settings);
+                             query,
+                             args,
+                             len_ref,
+                             len_query,
+                             ncols,
+                             dist,
+                             quantise,
+                             dp,
+                             window,
+                             p,
+                             cost_matrix,
+                             settings);
     }
         /*edit distance with traceback case*/
     else {
@@ -1412,19 +1520,19 @@ double ced(double *ref,
         dir_matrix = (int *) malloc(sizeof(int) * len_ref * len_query);
         /*call cedpath, computes distance, cost matrix and direction matrix*/
         distance = cedpath(ref,
-                            query,
-                            sigma,
-                            len_ref,
-                            len_query,
-                            ncols,
-                            dist,
-                            quantise,
-                            dp_dir,
-                            window,
-                            p,
-                            cost_matrix,
-                            dir_matrix,
-                            settings);
+                           query,
+                           args,
+                           len_ref,
+                           len_query,
+                           ncols,
+                           dist,
+                           quantise,
+                           dp_dir,
+                           window,
+                           p,
+                           cost_matrix,
+                           dir_matrix,
+                           settings);
 
         /*if distance is INFINITY there is not any path*/
         if (distance == INFINITY) {
@@ -1506,6 +1614,20 @@ void print_doublearr(double *arr, int n) {
     printf("\n");
 }
 
+/**
+ * Calculate the norm of an array given the distance function
+ */
+double norm(double *arr, int n, double (*dist)(double *, int, double *, int, int)) {
+    double *origin = malloc(sizeof(double) * n);
+    int i;
+    for (i = 0; i < n; i++) {
+        origin[i] = 0;
+    }
+    double result = dist(arr, 0, origin, 0, n);
+    free(origin);
+    return result;
+}
+
 //int main() {
 //    int i, j;
 //
@@ -1516,7 +1638,14 @@ void print_doublearr(double *arr, int n) {
 //    int ncols = 1;
 //    double r[] = {4, 4, 2, 4};
 //    double q[] = {5, 4, 5, 6, 4};
-//    double sigma = 1;
+//    t_extra_args args;
+//
+//    args.sigmas = malloc(sizeof(double) * ncols);
+//    args.gap = malloc(sizeof(double) * ncols);
+//    for (i = 0; i < ncols; i++) {
+//        args.gap[i] = 0;
+//        args.sigmas[i] = 1;
+//    }
 //
 //    int len_ref = sizeof(r) / sizeof(r[0]) / ncols;
 //    int len_query = sizeof(q) / sizeof(q[0]) / ncols;
@@ -1524,8 +1653,8 @@ void print_doublearr(double *arr, int n) {
 //
 //    settings.compute_path = true;
 //    settings.dist_type = _EUCLID;
-//    settings.dp_type = _DP2_EDR;
-//    settings.qtse_type = _EDR;
+//    settings.dp_type = _DP2_ERP;
+//    settings.qtse_type = _NO_QUANTISATION;
 //    settings.window_type = false;
 //    settings.window_param = 0;
 //    settings.norm = false;
@@ -1533,8 +1662,8 @@ void print_doublearr(double *arr, int n) {
 //
 //    int offset = settings.offset * ncols;
 //
-//    double *expanded_r = malloc(sizeof(double) * (len_ref*ncols + offset));
-//    double *expanded_q = malloc(sizeof(double) * (len_query*ncols + offset));
+//    double *expanded_r = malloc(sizeof(double) * (len_ref * ncols + offset));
+//    double *expanded_q = malloc(sizeof(double) * (len_query * ncols + offset));
 //
 //    for (i = 0; i < offset; i++) {
 //        expanded_r[i] = expanded_q[i] = 0;
@@ -1554,7 +1683,7 @@ void print_doublearr(double *arr, int n) {
 //    struct t_path_element *path = (struct t_path_element *) malloc(
 //            sizeof(struct t_path_element) * (len_ref + len_query));
 //    int path_len = 0;
-//    ced(expanded_r, expanded_q, sigma, len_ref, len_query, ncols, cost, path, &path_len, settings);
+//    ced(expanded_r, expanded_q, args, len_ref, len_query, ncols, cost, path, &path_len, settings);
 //    if (cost[14 * 14 - 1] == 4282.0)
 //        printf("\nFAIL");
 //    print_matrix(cost, len_ref + settings.offset, len_query + settings.offset);
@@ -1563,5 +1692,5 @@ void print_doublearr(double *arr, int n) {
 //
 //    return 0;
 //}
-//
+
 

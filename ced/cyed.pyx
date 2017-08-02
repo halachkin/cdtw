@@ -19,6 +19,11 @@ cdef extern from "ced.c":
         double b
         double c
 
+    cdef struct t_extra_args:
+        double * sigmas
+        double sigma
+        double * gap
+
     cdef struct t_settings:
         int compute_path
         int dist_type
@@ -32,7 +37,7 @@ cdef extern from "ced.c":
 
     cdef double ced(double *ref,
                     double *query,
-                    double sigma,
+                    t_extra_args args,
                     int len_ref,
                     int len_query,
                     int ncols,
@@ -51,6 +56,7 @@ cdef enum:
     _DP1 = 21
     _DP2 = 22
     _DP2_EDR = 220
+    _DP2_ERP = 221
     _DP3 = 23
     _SCP0SYM = 24
     _SCP0ASYM = 25
@@ -174,7 +180,7 @@ class Step(Setting):
 
     def __init__(self, step='dp2', weights = [1, 1, 1]):
         self._cur_type = step
-        self._types = {'dpw': _DPW, 'dp1': _DP1, 'dp2': _DP2, 'dp3': _DP3, 'dp2edr': _DP2_EDR,
+        self._types = {'dpw': _DPW, 'dp1': _DP1, 'dp2': _DP2, 'dp3': _DP3, 'dp2edr': _DP2_EDR, 'dp2erp': _DP2_ERP,
                        'p0sym': _SCP0SYM, 'p0asym': _SCP0ASYM,
                        'p05sym': _SCP1DIV2SYM, 'p05asym': _SCP1DIV2ASYM,
                        'p1sym': _SCP1SYM, 'p1asym': _SCP1ASYM,
@@ -251,12 +257,12 @@ class cyed:
     default settings are dp2 without global constraint
     """
 
-    def __init__(self, ref, query, sigma, settings=Settings()):
+    def __init__(self, ref, query, args, settings=Settings()):
         self._dist = None
         self._cost = [[]]
         self._dir = [[()]]
         self._path = [()]
-        self._ed(ref, query, sigma, settings)
+        self._ed(ref, query, args, settings)
 
     @staticmethod
     def flatten_padded(arr, offset):
@@ -273,7 +279,7 @@ class cyed:
             return np.vstack((np.zeros(pad_size), arr)).ravel(order='C')
 
 
-    def _ed(self, ref, query, sigma, settings):
+    def _ed(self, ref, query, args, settings):
         if not isinstance(ref, np.ndarray) or not isinstance(query, np.ndarray):
             raise Exception('Sequences must be numpy arrays')
 
@@ -327,12 +333,25 @@ class cyed:
         # init numpy arrays
         cdef np.ndarray[np.float_t, ndim = 1] cref
         cdef np.ndarray[np.float_t, ndim = 1] cquery
-        cdef np.ndarray[np.float_t, ndim = 1] csigma
+        cdef np.ndarray[np.float_t, ndim = 1] csigmas
+        cdef np.ndarray[np.float_t, ndim = 1] cgap
         cdef np.ndarray[np.float_t, ndim = 2] cost
 
         # expand ref and query and ravel as one dimensional, contiguous c arrays in memory
         cref = self.flatten_padded(ref, offset)
         cquery = self.flatten_padded(query, offset)
+
+        cdef t_extra_args cargs
+        if 'sigmas' in args:
+            csigmas = self.flatten_padded(args['sigmas'], 0)
+            cargs.sigmas = <double*> csigmas.data
+
+        if 'sigma' in args:
+            cargs.sigma = <double> args['sigma']
+
+        if 'gap' in args:
+            cgap = self.flatten_padded(args['gap'], 0)
+            cargs.gap = <double*> cgap.data
 
         # init cost matrix
         cost = np.zeros((len_ref + offset, len_qry + offset),
@@ -340,7 +359,7 @@ class cyed:
         # call ced function (in ced.c)
         self._dist = ced(<double*> cref.data,
                          <double *> cquery.data,
-                         <double> sigma,
+                         cargs,
                          <int> len_ref,
                           <int> len_qry,
                           <int> ncols,
