@@ -115,9 +115,9 @@ class EditDistance(cyed):
 
 
 class Dtw(EditDistance):
-    def __init__(self, ref, query, settings=Settings()):
+    def __init__(self, ref, query, args, settings=Settings()):
         settings.qtse.set_type('no_quantisation')
-        EditDistance.__init__(self, ref, query, {}, settings)
+        EditDistance.__init__(self, ref, query, args, settings)
 
 
 class Edr(EditDistance):
@@ -131,6 +131,15 @@ class Erp(EditDistance):
     def __init__(self, ref, query, args, settings=Settings()):
         settings.qtse.set_type('no_quantisation')
         settings.step.set_type('dp2erp')
+        cyed.__init__(self, ref, query, args, settings)
+
+
+class Lcss(EditDistance):
+    def __init__(self, ref, query, args, settings=Settings()):
+        if settings.compute_path:
+            raise Exception('Not yet supported')
+        settings.qtse.set_type('lcss')
+        settings.step.set_type('dp3_lcss')
         cyed.__init__(self, ref, query, args, settings)
 
 
@@ -156,15 +165,16 @@ if __name__ == '__main__':
 
     args = {'sigmas': tolerance, 'gap': gap}
 
-    d = Erp(r, q, args, settings=Settings(
+    d = Lcss(r, q, args, settings=Settings(
                               dist='euclid',
                               # step='p0sym',  # Sakoe-Chiba symmetric step with slope constraint p = 0
-                              window='palival',  # type of the window
-                              param=2.0,  # window parameter
-                              norm=False,  # normalization
-                              compute_path=True))
+                              # window='palival',  # type of the window
+                              # param=2.0,  # window parameter
+                              norm='min',  # normalization
+                              compute_path=False))
     print(d.get_cost())
     print(d.get_path())
+    print(d.get_dist())
 
     # d.plot_seq_mat_path()
     # plt.show()

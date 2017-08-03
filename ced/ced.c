@@ -49,7 +49,6 @@ double min_n(double *arr, int n) {
     return min;
 }
 
-
 /*
  * Function:  min2idx
  * --------------------
@@ -64,6 +63,30 @@ struct t_item min2idx(double a, double b) /*0, 1*/
 {
     struct t_item item;
     if (a < b) {
+        item.val = a;
+        item.idx = 0;
+    }
+    else {
+        item.val = b;
+        item.idx = 1;
+    }
+    return item;
+}
+
+/*
+ * Function:  max2idx
+ * --------------------
+ *  Finds the maximum of 2 doubles and its position (0 or 1)
+
+ *  double a: a
+ *  double b: b
+
+ *  returns:  struct t_item, t_item = { min(a,b), position }
+ */
+struct t_item max2idx(double a, double b) /*0, 1*/
+{
+    struct t_item item;
+    if (a >= b) {
         item.val = a;
         item.idx = 0;
     }
@@ -264,6 +287,27 @@ double dp3(_DP_ARGS) {
 }
 
 /*
+ * Function:  dp3_lcss (for LCSS)
+ * --------------------
+ *  Step patern:
+      If the ref[i] and query[j] match, then increase the previous edge (cost_matrix[i-1, j-1]) by 1
+      Otherwise, take the max of the up (cost_matrix[i, j-1]) and left (cost_matrix[i-1, j]) elements
+
+ * see  M. Vlachos, M. Hadjieleftheriou, D. Gunopulos, and E. Keogh.
+ *      "Indexing multi-dimensional time-series with support for multiple distance measures",
+ *      In Proc. SIGKDD, 2003
+*/
+double dp3_lcss(_DP_ARGS) {
+    /* The quantisation function should return 1 for matching pair and 0 for non matching pair */
+    double d = quantise(dist(ref, i, query, j, ncols), args.sigma);
+    if (d == 1) {
+        return cost_matrix[idx(i - 1, j - 1, size2)] + 1;
+    }
+    return (max2(cost_matrix[idx(i, j - 1, size2)],
+                 cost_matrix[idx(i - 1, j, size2)]));
+}
+
+/*
  * Function:  dp1dir
  * --------------------
  * see doc for the dpw
@@ -296,6 +340,30 @@ struct t_item dp3dir(_DP_ARGS) {
     double d = quantise(dist(ref, i, query, j, ncols), args.sigma);
     return min2idx(cost_matrix[idx(i, j - 1, size2)] + d,
                    cost_matrix[idx(i - 1, j, size2)] + d);
+}
+
+/*
+ * Function:  dp3lcssdir (for LCSS)
+ * --------------------
+ *  Step patern:
+      If the ref[i] and query[j] match, then increase the previous edge (cost_matrix[i-1, j-1]) by 1
+      Otherwise, take the max of the up (cost_matrix[i, j-1]) and left (cost_matrix[i-1, j]) elements
+
+ * see  M. Vlachos, M. Hadjieleftheriou, D. Gunopulos, and E. Keogh.
+ *      "Indexing multi-dimensional time-series with support for multiple distance measures",
+ *      In Proc. SIGKDD, 2003
+*/
+struct t_item dp3_lcss_dir(_DP_ARGS) {
+    /* The quantisation function should return 1 for matching pair and 0 for non matching pair */
+    double d = quantise(dist(ref, i, query, j, ncols), args.sigma);
+    if (d == 1) {
+        struct t_item item;
+        item.val = cost_matrix[idx(i - 1, j - 1, size2)] + 1;
+        item.idx = 0;
+        return item;
+    }
+    return max2idx(cost_matrix[idx(i, j - 1, size2)],
+                   cost_matrix[idx(i - 1, j, size2)]);
 }
 
 /**
@@ -852,16 +920,16 @@ double euclid_square(double *a, int i, double *b, int j, int ncols) {
 //
 ///**
 // * Quantise the value of real distance (d) given the tolerance value (tol)
-// * The distance is an Lp-norm
+// * The distance is an Lp-norm_type
 // */
-//double edr_norm(double* raw_dist, int ncols, double tol, double (*norm)(double *, int)){
-//    double d = norm(raw_dist, ncols);
+//double edr_norm(double* raw_dist, int ncols, double tol, double (*norm_type)(double *, int)){
+//    double d = norm_type(raw_dist, ncols);
 //    return (d <= tol) ? 0 : 1;
 //}
 //
 ///**
 // * Quantise the value of the distance between two vectors given the tolerance values (tol)
-// * The distance is still a vector, not norm. So is the tolerance.
+// * The distance is still a vector, not norm_type. So is the tolerance.
 // * The quantised value is 0 (similar) if the distance vector is less than the tolerance vector at all dimension
 // */
 //double edr_dim(double* raw_dist, int ncols, double * tol){
@@ -879,6 +947,14 @@ double euclid_square(double *a, int i, double *b, int j, int ncols) {
  */
 double edr(double d, double s) {
     return (d <= s) ? 0 : 1;
+}
+
+/**
+ * Quantise the value of real distance (d) given the tolerance value (s).
+ * For LCSS, the value will be oposite: similar points (d <= s) is quantised as 1 and vice versa.
+ */
+double lcss(double d, double s) {
+    return (d > s) ? 0 : 1;
 }
 
 /**
@@ -915,6 +991,8 @@ qtse_fptr choose_quantisation(int qtse_type) {
     switch (qtse_type) {
         case _EDR:
             return &edr;
+        case _LCSS:
+            return &lcss;
         default:
             return &no_qtse;
     }
@@ -937,6 +1015,8 @@ dp_fptr choose_dp(int dp_type) {
             return &dp2;
         case _DP3:
             return &dp3;
+        case _DP3_LCSS:
+            return &dp3_lcss;
         case _DPW:
             return &dpw;
         case _DP2_EDR:
@@ -979,6 +1059,8 @@ dpdir_fptr choose_dpdir(int dp_type) {
             return &dp2dir;
         case _DP3:
             return &dp3dir;
+        case _DP3_LCSS:
+            return &dp3_lcss_dir;
         case _DPW:
             return &dpwdir;
         case _DP2_EDR:
@@ -1066,6 +1148,7 @@ const int (*choose_path_pattern(struct t_settings settings))[11] {
         case _SCP0SYM:
             return dp2_path_pattern;
         case _DP3:
+        case _DP3_LCSS:
             return dp1_path_pattern;
         case _SCP1DIV2SYM:
         case _SCP1DIV2ASYM:
@@ -1093,6 +1176,7 @@ int extra_size(int dp_type) {
         case _DP1:
         case _DP2:
         case _DP3:
+        case _DP3_LCSS:
         case _DP2_EDR:
         case _DP2_ERP:
         case _SCP0ASYM:
@@ -1400,27 +1484,52 @@ void fill_matrix(double *matrix,
     int N = len_query + settings.offset;
     int i = 0;
     int j = 0;
-    /*if there is a window or complicated step pattern*/
-    if (settings.window_type != 0 || (settings.dp_type != _DP1 &&
-                                      settings.dp_type != _DP2 &&
-                                      settings.dp_type != _DP3 &&
-                                      settings.dp_type != _SCP0SYM)
-            ) /* + _SCP0ASYM??*/
-    {
-        for (i = 0; i < M; i++)
-            for (j = 0; j < N; j++)
-                matrix[idx(i, j, N)] = INFINITY;
-    }
-    else {
-        for (i = 0; i < M; i++)
-            for (j = 0; j < settings.offset; j++)
-                matrix[idx(i, j, N)] = INFINITY;
 
-        for (i = 0; i < settings.offset; i++)
-            for (j = 0; j < N; j++)
-                matrix[idx(i, j, N)] = INFINITY;
+    typedef enum FILL_TYPE {
+        FILL_ALL_ZERO,                 ///< If the step pattern is _DP3_LCSS, fill the entire matrix with zero
+        FILL_ALL_INFINITY,             ///< If there is a window or complicated step pattern, fill the entire matrix with INF
+        FILL_INFINITY_RIM_ZERO_INSIDE  ///< All other case fill the rim with INF and everything inside zero
+    } FILL_TYPE;
+
+    FILL_TYPE fill_type;
+
+    switch (settings.dp_type) {
+        case _DP1:
+        case _DP2:
+        case _DP3:
+        case _SCP0SYM:
+            fill_type = settings.window_type != 0 ? FILL_ALL_INFINITY : FILL_INFINITY_RIM_ZERO_INSIDE;
+            break;
+        case _DP3_LCSS:
+            fill_type = FILL_ALL_ZERO;
+            break;
+        default:
+            fill_type = FILL_ALL_INFINITY;
+            break;
     }
 
+    switch (fill_type) {
+
+        case FILL_ALL_ZERO:
+            for (i = 0; i < M; i++)
+                for (j = 0; j < N; j++)
+                    matrix[idx(i, j, N)] = 0;
+            break;
+        case FILL_ALL_INFINITY:
+            for (i = 0; i < M; i++)
+                for (j = 0; j < N; j++)
+                    matrix[idx(i, j, N)] = INFINITY;
+            break;
+        case FILL_INFINITY_RIM_ZERO_INSIDE:
+            for (i = 0; i < M; i++)
+                for (j = 0; j < settings.offset; j++)
+                    matrix[idx(i, j, N)] = INFINITY;
+
+            for (i = 0; i < settings.offset; i++)
+                for (j = 0; j < N; j++)
+                    matrix[idx(i, j, N)] = INFINITY;
+            break;
+    }
 }
 
 /*
@@ -1497,6 +1606,7 @@ double ced(double *ref,
 
     /*prepare cost matrix*/
     fill_matrix(cost_matrix, len_ref, len_query, settings);
+
     /*edit distance without traceback case(only cost_matrix and distance)*/
     if (settings.compute_path == false) {
 
@@ -1567,19 +1677,13 @@ double ced(double *ref,
 
     }
 
-
-    /*euclidian metric case*/
-    if (settings.dist_type == _EUCLID)
-        distance = sqrt(distance);
-
-
     /*normalization case*/
-    if (settings.norm)
-        return distance / (double) (len_ref + len_query);  //TOTO: ADD NORM FACTORS
-        /*there is no normalization*/
-    else
-        return distance;
+    double normed = normalise(distance, len_ref, len_query, settings.norm_type);
 
+    if (settings.dp_type == _DP3_LCSS) {
+        return 1.0 - normed;
+    }
+    return normed;
 }
 
 
@@ -1615,7 +1719,7 @@ void print_doublearr(double *arr, int n) {
 }
 
 /**
- * Calculate the norm of an array given the distance function
+ * Calculate the norm_type of an array given the distance function
  */
 double norm(double *arr, int n, double (*dist)(double *, int, double *, int, int)) {
     double *origin = malloc(sizeof(double) * n);
@@ -1627,6 +1731,23 @@ double norm(double *arr, int n, double (*dist)(double *, int, double *, int, int
     free(origin);
     return result;
 }
+
+/**
+ * Normalise the distance given the normalisation type
+ */
+double normalise(double d, int len_ref, int len_query, int norm_type) {
+    switch (norm_type) {
+        case _NORM_BY_MIN_LENGTH:
+            return d / (double) min2(len_ref, len_query);
+        case _NORM_BY_MAX_LENGTH:
+            return d / (double) max2(len_ref, len_query);
+        case _NORM_BY_AVG_LENGTH:
+            return d / ((len_ref + len_query) / 2.0);
+        default:
+            return d;
+    }
+}
+
 
 //int main() {
 //    int i, j;
@@ -1651,13 +1772,13 @@ double norm(double *arr, int n, double (*dist)(double *, int, double *, int, int
 //    int len_query = sizeof(q) / sizeof(q[0]) / ncols;
 //    struct t_settings settings;
 //
-//    settings.compute_path = true;
+//    settings.compute_path = false;
 //    settings.dist_type = _EUCLID;
-//    settings.dp_type = _DP2_ERP;
-//    settings.qtse_type = _NO_QUANTISATION;
-//    settings.window_type = false;
-//    settings.window_param = 0;
-//    settings.norm = false;
+//    settings.dp_type = _DP3_LCSS;
+//    settings.qtse_type = _LCSS;
+////    settings.window_type = _PALIVAL;
+//    settings.window_param = 1;
+//    settings.norm_type = _NORM_BY_AVG_LENGTH;
 //    settings.offset = extra_size(settings.dp_type);
 //
 //    int offset = settings.offset * ncols;
@@ -1683,14 +1804,14 @@ double norm(double *arr, int n, double (*dist)(double *, int, double *, int, int
 //    struct t_path_element *path = (struct t_path_element *) malloc(
 //            sizeof(struct t_path_element) * (len_ref + len_query));
 //    int path_len = 0;
-//    ced(expanded_r, expanded_q, args, len_ref, len_query, ncols, cost, path, &path_len, settings);
+//    double dist = ced(expanded_r, expanded_q, args, len_ref, len_query, ncols, cost, path, &path_len, settings);
 //    if (cost[14 * 14 - 1] == 4282.0)
 //        printf("\nFAIL");
 //    print_matrix(cost, len_ref + settings.offset, len_query + settings.offset);
 //    for (i = 0; i < path_len; i++)
 //        printf("i: %d  j: %d\n", path[i].i, path[i].j);
 //
+//    printf("Dist = %.2f", dist);
 //    return 0;
 //}
-
 

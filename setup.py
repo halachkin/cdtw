@@ -34,13 +34,14 @@ setup(
     cmdclass={'build_ext': build_ext},
     ext_modules=ext_modules,
     packages=find_packages(),
-    version='0.0.4',
+    version='0.0.7',
     author=['Aliaksei Halachkin', 'Yukio Fukuzawa'],
     author_email=['aliaksei.h(you know what)gmail.com', 'y (...) io * ac * nz'],
     description='Edit Distance',
     long_description=open('README.md').read(),
     url='https://github.com/yfukuzaw/ced',
-    keywords=['dtw', 'dynamic time warping', 'ed', 'edit distance', 'edr', 'edit distance on real sequences'],
+    keywords=['dtw', 'dynamic time warping', 'ed', 'edit distance', 'edr', 'edit distance on real sequences'
+              'erp', 'edit distance with real penalty', 'lcss', 'longest common subsequence'],
     install_requires=['numpy'],
 
 )

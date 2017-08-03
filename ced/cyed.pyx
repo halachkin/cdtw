@@ -31,7 +31,7 @@ cdef extern from "ced.c":
         int dp_type
         int window_type
         double window_param
-        int norm
+        int norm_type
         int offset
         t_weights weights
 
@@ -58,6 +58,7 @@ cdef enum:
     _DP2_EDR = 220
     _DP2_ERP = 221
     _DP3 = 23
+    _DP3_LCSS = 230
     _SCP0SYM = 24
     _SCP0ASYM = 25
     _SCP1DIV2SYM = 26
@@ -72,8 +73,15 @@ cdef enum:
     _ITAKURA = 33
     _PALIVAL_MOD = 35
 
-    _EDR = 40
-    _NO_QUANTISATION = 41
+    _NO_QUANTISATION = 40
+    _EDR = 41
+    _LCSS = 42
+
+    _NO_NORMALISATION = 50
+    _NORM_BY_MIN_LENGTH = 51
+    _NORM_BY_AVG_LENGTH = 52
+    _NORM_BY_MAX_LENGTH = 53
+
 
 cdef path_wrapper(t_path_element *cpath, int cpath_len):
     """Path wrapper
@@ -152,8 +160,20 @@ class Quantisation(Setting):
         """
         Setting.__init__(self)
         self._cur_type = qtse
-        self._types = {'edr': _EDR,
+        self._types = {'edr': _EDR, 'lcss': _LCSS,
                        'no_quantisation': _NO_QUANTISATION}
+
+
+class Normalisation(Setting):
+    def __init__(self, norm='none'):
+        """__init__ method
+        Args:
+            qtse(str, optional): quantisation type, default is 'no_quantisation'
+        """
+        Setting.__init__(self)
+        self._cur_type = norm
+        self._types = {'none': _NO_NORMALISATION, 'min': _NORM_BY_MIN_LENGTH,
+                       'avg': _NORM_BY_AVG_LENGTH, 'max': _NORM_BY_MAX_LENGTH}
 
 
 class Step(Setting):
@@ -180,7 +200,8 @@ class Step(Setting):
 
     def __init__(self, step='dp2', weights = [1, 1, 1]):
         self._cur_type = step
-        self._types = {'dpw': _DPW, 'dp1': _DP1, 'dp2': _DP2, 'dp3': _DP3, 'dp2edr': _DP2_EDR, 'dp2erp': _DP2_ERP,
+        self._types = {'dpw': _DPW, 'dp1': _DP1, 'dp2': _DP2, 'dp2edr': _DP2_EDR, 'dp2erp': _DP2_ERP,
+                       'dp3': _DP3, 'dp3_lcss': _DP3_LCSS,
                        'p0sym': _SCP0SYM, 'p0asym': _SCP0ASYM,
                        'p05sym': _SCP1DIV2SYM, 'p05asym': _SCP1DIV2ASYM,
                        'p1sym': _SCP1SYM, 'p1asym': _SCP1ASYM,
@@ -233,21 +254,18 @@ class Settings:
                  step='dp2',
                  window='nowindow',
                  param=0.0,
-                 norm=False,
+                 norm='no_normalisation',
                  compute_path=False):
         self.dist = Dist(dist)
         self.step = Step(step)
         self.qtse = Quantisation(qtse)
         self.window = Window(window, param)
         self.compute_path = compute_path
-        self.norm = norm
+        self.norm = Normalisation(norm)
 
     def __str__(self):
-        return str('distance function: ' + str(self.dist) + '\n'
-                                                            'local constraint: ' + str(self.step) + '\n'
-                                                                                                    'window: ' + str(
-            self.window) + '\n'
-                           'normalization: ' + str(self.norm) + '\n')
+        return 'Distance function: {}\nLocal constraint: {}\nWindow: {}\nNormalisation: {}\n'\
+            .format(self.dist, self.step, self.window, self.norm)
 
 
 class cyed:
@@ -309,7 +327,7 @@ class cyed:
         c_settings.dp_type = <int> settings.step.get_cur_type_code()
         c_settings.window_type = <int> settings.window.get_cur_type_code()
         c_settings.window_param = <double> settings.window.get_param()
-        c_settings.norm = <int> settings.norm
+        c_settings.norm_type = <int> settings.norm.get_cur_type_code()
         c_settings.offset = extra_size(c_settings.dp_type)
         c_settings.weights.a = <double> settings.step.get_weights()[0]
         c_settings.weights.b = <double> settings.step.get_weights()[1]
