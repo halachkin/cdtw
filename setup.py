@@ -11,37 +11,33 @@ else:
     use_cython = True
 
 if use_cython:
-    sourcefiles = ['ced/cyed.pyx']
+    sourcefiles = ['cdtw/cydtw.pyx']
 else:
-    sourcefiles = ['ced/cyed.c']
+    sourcefiles = ['cdtw/cydtw.c']
 
 ext_modules = [
-    Extension("ced.cyed",
-              sourcefiles,
-              include_dirs=[numpy.get_include(), 'ced/'],
-              extra_compile_args=[
-                  "-std=c11",
-                  "-Wno-incompatible-pointer-types",
-                  "-Wno-unused-variable",
-                  "-Wno-absolute-value",
-                  "-Wno-visibility",
-                  "-Wno-#warnings"]
-              )
-]
+        Extension("cdtw.cydtw", 
+            sourcefiles,
+            include_dirs=[numpy.get_include(), 'cdtw/'],
+            # extra_compile_args=[""]
+            extra_compile_args=["-std=c11"]
+            )
+        ]
 
 setup(
-    name='ced',
-    cmdclass={'build_ext': build_ext},
-    ext_modules=ext_modules,
-    packages=find_packages(),
-    version='0.0.7',
-    author=['Aliaksei Halachkin', 'Yukio Fukuzawa'],
-    author_email=['aliaksei.h(you know what)gmail.com', 'y (...) io * ac * nz'],
-    description='Edit Distance',
+    name='cdtw',
+    cmdclass = {'build_ext': build_ext},
+    ext_modules = ext_modules,
+    packages = find_packages(),
+    version='0.0.1',
+    author = 'Aliaksei Halachkin',
+    author_email = 'aliaksei.h(you know what)gmail.com',
+    description='DTW computation',
     long_description=open('README.md').read(),
-    url='https://github.com/yfukuzaw/ced',
-    keywords=['dtw', 'dynamic time warping', 'ed', 'edit distance', 'edr', 'edit distance on real sequences'
-              'erp', 'edit distance with real penalty', 'lcss', 'longest common subsequence'],
+
+    url='https://github.com/honeyext/cdtw',
+
+    keywords = ['dtw', 'dynamic time warping'],
     install_requires=['numpy'],
 
 )
