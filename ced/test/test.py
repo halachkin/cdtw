@@ -3,7 +3,9 @@
 
 
 import numpy as np
-from cdtw.src.pydtw import*
+
+from ced.cyed import Settings
+from ced.pyed import *
 
 class TestSuite:
     """
@@ -248,7 +250,6 @@ def run(settings, test_suite):
     test_id = 'Sakoe-Chiba P = 2 asym'
     t.run_test(round(dist_,5), dist, str("Distance error, test ID: " + str(test_id) ))
     t.run_test(path_, path, str("Path error, test ID: " + str(test_id)))
-
 
     np.set_printoptions(linewidth = 180, suppress = True, precision  = 3)
 
